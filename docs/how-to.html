@@ -24,11 +24,14 @@
   .call { text-align:center; margin-top:36px; font-size:19px; background:#12212e; color:#fff; border-radius:12px; padding:20px; }
   .print { text-align:center; margin:10px 0 24px; }
   button { font:inherit; background:var(--accent); color:#fff; border:0; border-radius:8px; padding:12px 22px; font-weight:600; cursor:pointer; }
-  @media print { .print { display:none; } body { font-size:15px; } }
+  .topnav{ margin-bottom:14px; font-size:15px; }
+  .topnav a{ color:var(--accent); text-decoration:none; font-weight:600; }
+  @media print { .print, .topnav { display:none; } body { font-size:15px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="topnav"><a href="index.html">← Home (all tools)</a> &middot; <a href="crm.html">Open the CRM</a> &middot; <a href="demo.html">Quote builder</a></div>
   <h1>Your Quote Tool — Easy Guide</h1>
   <p class="sub">Everything you need in a few simple steps. No computer skills needed.</p>
   <div class="print"><button onclick="window.print()">🖨️ Print this page</button></div>

@@ -1,5 +1,5 @@
 /* Simple offline cache so the tools work at a job site with no signal. */
-const CACHE = 'quotes-cache-v5';
+const CACHE = 'quotes-cache-v6';
 const ASSETS = [
   './', './index.html', './demo.html', './tracker.html', './why-us.html', './crm.html', './how-to.html',
   './manifest.json', './manifest-tracker.json', './manifest-crm.json',
