@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quote follow-up tracker — stop leaving money on the table</title>
+<link rel="manifest" href="manifest-tracker.json">
+<meta name="theme-color" content="#1a6feb">
+<link rel="icon" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Follow-ups">
 <style>
   :root { --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --bg:#f7f9fc; --ok:#1a8f4c; --warn:#c0392b; --line:#e6ebf1; }
   * { box-sizing:border-box; }
@@ -180,6 +187,9 @@ $('seed').onclick=()=>{
 
 $('fDate').value=iso(today());
 load(); render();
+
+/* register offline service worker (safe no-op if unsupported) */
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
 </body>
 </html>

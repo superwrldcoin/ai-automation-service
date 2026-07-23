@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Live demo — instant home-service quote builder</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a6feb">
+<link rel="icon" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quotes">
 <style>
   :root { --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --bg:#f7f9fc; --ok:#1a8f4c; --line:#e6ebf1; }
   * { box-sizing:border-box; }
@@ -181,6 +188,7 @@
 <div class="foot">
   <div class="wrap">
     This is a working sample of what I build for you. <a href="why-us.html">Why own it vs. rent a subscription &rarr;</a> ·
+    <a href="how-to.html">See the plain-English client guide</a> ·
     <a href="https://github.com/superwrldcoin/ai-automation-service">Code on GitHub</a>
   </div>
 </div>
@@ -502,6 +510,9 @@ $('analyze').onclick=analyze;
 $('aiFile').onchange=e=>{ const f=e.target.files[0]; if(f){ $('aiStatus').textContent='File ready: '+f.name+' — click Analyze.'; } };
 
 renderCatalog();
+
+/* register offline service worker (safe no-op if unsupported) */
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
 </body>
 </html>
