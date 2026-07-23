@@ -46,9 +46,9 @@ def main():
     ap.add_argument("--shop", default="", help="shop ZIP or city (trip-fee origin)")
     ap.add_argument("--tax", type=float, default=7)
     ap.add_argument("--deposit", type=float, default=50)
-    ap.add_argument("--name", default="", help="support contact name")
+    ap.add_argument("--name", default="Vivid Static Lab", help="support contact name")
     ap.add_argument("--phone", default="")
-    ap.add_argument("--email", default="")
+    ap.add_argument("--email", default="hello@vividstatic.com")
     ap.add_argument("--pricebook", default="", help="optional path to a JSON pricebook override")
     args = ap.parse_args()
 
