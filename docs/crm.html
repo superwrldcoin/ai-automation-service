@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Business Hub — customers, quotes & follow-ups</title>
+<link rel="manifest" href="manifest-crm.json">
+<meta name="theme-color" content="#12212e">
+<link rel="icon" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hub">
+<style>
+  :root{ --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --ok:#1a8f4c; --warn:#c0392b;
+         --bg:#f7f9fc; --line:#e6ebf1; --side:#1a1330; --side2:#2a2140; --sideink:#d7d3e6; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink);
+        background:var(--bg); line-height:1.5; font-size:15px; }
+  #app{ display:flex; height:100vh; overflow:hidden; }
+
+  /* ---- Slack-style sidebar ---- */
+  #sidebar{ width:250px; flex:0 0 250px; background:var(--side); color:var(--sideink);
+            display:flex; flex-direction:column; transition:transform .2s; z-index:40; }
+  .ws{ padding:16px 16px 12px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:10px; }
+  .ws .logo{ width:32px; height:32px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; }
+  .ws .nm{ font-weight:700; color:#fff; font-size:15px; line-height:1.15; }
+  .ws .nm small{ display:block; font-weight:400; color:var(--sideink); font-size:11px; }
+  .navwrap{ overflow-y:auto; padding:10px 8px 20px; flex:1; }
+  .sec{ font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:#8a83a6; margin:14px 10px 4px; }
+  .nav{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:pointer;
+        color:var(--sideink); font-size:14.5px; text-decoration:none; }
+  .nav:hover{ background:var(--side2); color:#fff; }
+  .nav.on{ background:var(--accent); color:#fff; }
+  .nav .ic{ width:20px; text-align:center; }
+  .nav .badge{ margin-left:auto; background:var(--warn); color:#fff; font-size:11px; font-weight:700; border-radius:20px; padding:1px 7px; }
+  .nav.on .badge{ background:rgba(255,255,255,.3); }
+
+  /* ---- main ---- */
+  #main{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  #topbar{ height:56px; flex:0 0 56px; background:#fff; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; gap:12px; padding:0 16px; }
+  #hamburger{ display:none; font-size:22px; background:none; border:0; cursor:pointer; }
+  #topbar h1{ font-size:17px; margin:0; }
+  #search{ margin-left:auto; }
+  #search input{ border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:inherit; width:220px; }
+  .btn{ font:inherit; font-weight:600; border:0; border-radius:8px; cursor:pointer; background:var(--accent); color:#fff; padding:9px 16px; }
+  .btn.sec{ background:#eef2f7; color:var(--ink); } .btn.sm{ padding:6px 11px; font-size:13px; }
+  .btn.ok{ background:var(--ok);} .btn.warn{ background:var(--warn);} .btn.gold{background:var(--gold);color:#3a2e10;}
+  #view{ overflow-y:auto; padding:22px; flex:1; }
+
+  /* ---- shared ---- */
+  .tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  @media(max-width:820px){ .tiles{ grid-template-columns:1fr 1fr; } }
+  .tile{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .tile .n{ font-size:24px; font-weight:800; } .tile .l{ font-size:12px; color:#6b7b8a; margin-top:2px; }
+  .tile.pipe .n{color:var(--accent);} .tile.risk .n{color:var(--warn);} .tile.win .n{color:var(--ok);}
+  .card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h2{ margin:0 0 12px; font-size:16px; }
+  .row{ display:grid; gap:12px; } .r2{grid-template-columns:1fr 1fr;} .r3{grid-template-columns:1fr 1fr 1fr;} .r4{grid-template-columns:repeat(4,1fr);}
+  @media(max-width:720px){ .r2,.r3,.r4{ grid-template-columns:1fr; } }
+  label.f{ display:block; font-size:11px; font-weight:600; color:#41586b; margin:0 0 3px; }
+  input,select,textarea{ font:inherit; font-size:14px; width:100%; padding:9px 10px; border:1px solid #d4dde6; border-radius:8px; background:#fff; }
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{ text-align:left; background:#f7f9fc; color:#6b7b8a; font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:9px 10px; border-bottom:2px solid var(--line); }
+  td{ padding:10px; border-bottom:1px solid #f0f3f7; vertical-align:middle; }
+  tr.clk{ cursor:pointer; } tr.clk:hover{ background:#f7f9fc; }
+  tr.over{ background:#fdf1f0; } tr.due{ background:#fff8ec; }
+  .badge2{ font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .b-lead{background:#eceff2;color:#57606a;} .b-quoted{background:#e7effd;color:#1a6feb;}
+  .b-won{background:#e2f2e8;color:#1a8f4c;} .b-lost{background:#f3e5e5;color:#a5493f;}
+  .b-over{background:#fbe0dd;color:#c0392b;} .b-due{background:#fdefd0;color:#a5730c;}
+  .empty{ text-align:center; color:#8797a5; padding:34px 16px; }
+  .empty .big{ font-size:16px; color:#5a6b7b; margin-bottom:6px; }
+  .muted{ color:#8797a5; font-size:13px; }
+  .pill{ display:inline-block; background:#eef2f7; border-radius:20px; padding:3px 10px; font-size:12px; margin:2px 4px 2px 0; }
+  .catrow{ display:grid; grid-template-columns:26px 1fr 80px 96px; gap:10px; align-items:center; padding:8px 10px; border-bottom:1px solid #f0f3f7; }
+  .catrow input[type=number]{ padding:6px; text-align:center; }
+  .help{ background:#eef4ff; border:1px solid #cfe0ff; border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; color:#274b74; }
+  .backlink{ color:var(--accent); cursor:pointer; font-size:13px; display:inline-block; margin-bottom:10px; }
+  .flex{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .between{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .acts{ display:flex; gap:5px; flex-wrap:wrap; }
+  /* overlay/modal */
+  .overlay{ position:fixed; inset:0; background:rgba(18,33,46,.6); display:none; align-items:center; justify-content:center; padding:16px; z-index:60; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:12px; width:100%; max-width:780px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal .bar{ display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); gap:8px; flex-wrap:wrap;}
+  .modal iframe{ border:0; width:100%; flex:1; min-height:60vh; }
+  #scrim{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; z-index:35; }
+
+  @media(max-width:760px){
+    #sidebar{ position:fixed; top:0; bottom:0; left:0; transform:translateX(-100%); }
+    #sidebar.open{ transform:translateX(0); }
+    #hamburger{ display:block; }
+    #search input{ width:130px; }
+    #app{ height:100dvh; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="ws">
+      <div class="logo" id="wsLogo">B</div>
+      <div class="nm" id="wsName">Your Business<small id="wsTrade">Home services</small></div>
+    </div>
+    <div class="navwrap" id="navwrap"><!-- nav injected --></div>
+  </aside>
+
+  <div id="main">
+    <div id="topbar">
+      <button id="hamburger">☰</button>
+      <h1 id="viewTitle">Home</h1>
+      <div id="search"><input id="q" placeholder="Search customers…"></div>
+      <button class="btn sm" id="newBtn">＋ New quote</button>
+    </div>
+    <div id="view"></div>
+  </div>
+</div>
+<div id="scrim"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="bar">
+      <strong id="mTitle">Document</strong>
+      <div class="flex">
+        <button class="btn sm sec" id="mPrint">Print / Save as PDF</button>
+        <button class="btn sm sec" id="mClose">Close</button>
+      </div>
+    </div>
+    <iframe id="mFrame" title="document"></iframe>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* =================== data =================== */
+const BOOKS = {
+  hvac:{label:'HVAC',items:[['Diagnostic / service call',89],['AC tune-up & maintenance',129],['Refrigerant recharge (per lb)',95],['Capacitor replacement',189],['Condenser fan motor',475],['Blower motor replacement',650],['Smart thermostat install',325],['Duct cleaning',450],['New 3-ton AC system installed',6800]]},
+  plumbing:{label:'Plumbing',items:[['Service call / diagnostic',79],['Main drain cleaning',250],['Leak detection',225],['Faucet replacement',185],['Toilet replacement',375],['Sump pump replacement',650],['40-gal water heater install',1850],['Tankless water heater install',3900],['Repipe (per fixture)',450]]},
+  electrical:{label:'Electrical',items:[['Service call / diagnostic',95],['Outlet / switch replacement',145],['Ceiling fan install',185],['Recessed lighting (per fixture)',125],['Whole-home surge protector',325],['EV charger install',1250],['Generator transfer switch',950],['200A panel upgrade',2400]]},
+  roofing:{label:'Roofing',items:[['Roof inspection',150],['Flashing repair',325],['Minor roof repair',450],['Attic ventilation',550],['Skylight install',850],['Gutter replacement (per ft)',12],['Shingle replacement (per square)',375],['Full reroof (avg home)',9500]]},
+};
+const KEY='crm_v1';
+const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50}, pricebook:{}, customers:[], quotes:[], activity:[] };
+let S = loadState();
+function loadState(){ try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.settings){ if(!s.pricebook||!Object.keys(s.pricebook).length) seedBook(s); if(!s.activity)s.activity=[]; return s; } }catch(e){} const init=JSON.parse(JSON.stringify(DEFAULTS)); seedBook(init); return init; }
+function seedBook(st){ st.pricebook={}; for(const k in BOOKS){ st.pricebook[k]=BOOKS[k].items.map(it=>({name:it[0],price:it[1]})); } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+
+/* =================== helpers =================== */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money=n=>'$'+Math.round((+n||0)).toLocaleString('en-US');
+const money2=n=>'$'+(Math.round((+n||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const uid=()=>Date.now().toString(36)+Math.floor(Math.random()*1e5).toString(36);
+function todayD(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseD(s){ const p=String(s).split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+function fmtD(s){ if(!s)return '—'; return parseD(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function addDays(s,n){ const d=parseD(s); d.setDate(d.getDate()+n); return d; }
+function book(trade){ return (S.pricebook[trade]||BOOKS[trade].items.map(it=>({name:it[0],price:it[1]}))); }
+function cust(id){ return S.customers.find(c=>c.id===id); }
+function logAct(text){ S.activity.unshift({id:uid(),when:new Date().toISOString(),text}); S.activity=S.activity.slice(0,60); }
+
+function qTotals(q){
+  const sub=(q.items||[]).reduce((s,i)=>s+(+i.qty||1)*(+i.price||0),0)+(+q.tripFee||0);
+  const disc=+q.discount||0; const taxable=Math.max(0,sub-disc);
+  const tax=taxable*(+S.settings.taxRate||0)/100; const total=taxable+tax;
+  const dep=total*((q.depositPct!=null?q.depositPct:S.settings.depositPct)||0)/100;
+  return {sub,disc,tax,total,dep};
+}
+/* follow-up status for a 'quoted' opportunity */
+function fuStatus(q){
+  if(q.stage==='won')return'won'; if(q.stage==='lost')return'lost'; if(q.stage==='lead')return'lead';
+  const due=addDays(q.sent||iso(todayD()), q.followDays!=null?q.followDays:3); const t=todayD();
+  if(due<t)return'over'; if(due.getTime()===t.getTime())return'due'; return'quoted';
+}
+const STAGE_BADGE={lead:'b-lead',quoted:'b-quoted',won:'b-won',lost:'b-lost',over:'b-over',due:'b-due'};
+const STAGE_LABEL={lead:'Lead',quoted:'In pipeline',won:'Won',lost:'Lost',over:'Overdue follow-up',due:'Follow up today'};
+
+/* =================== geocoding (offline-safe) =================== */
+async function geocode(q){
+  const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q);
+  const r=await fetch(url,{headers:{'Accept':'application/json'}}); if(!r.ok)throw 0;
+  const d=await r.json(); if(!d.length)throw 0; return d[0];
+}
+function haversine(a,b){ const R=3958.8,t=x=>x*Math.PI/180; const dLat=t(b.lat-a.lat),dLon=t(b.lon-a.lon);
+  const s=Math.sin(dLat/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(s)); }
+function tripFeeFor(miles){ return miles==null?0:Math.min(120,Math.max(0,Math.round(miles-15)*2)); }
+
+/* =================== navigation shell =================== */
+const NAV=[
+  {sec:'Workspace'},
+  {id:'home',ic:'🏠',label:'Home'},
+  {id:'customers',ic:'👥',label:'Customers'},
+  {id:'pipeline',ic:'📋',label:'Quotes & Jobs'},
+  {id:'followups',ic:'🔔',label:'Follow-ups',badge:true},
+  {id:'schedule',ic:'📅',label:'Schedule'},
+  {sec:'Setup'},
+  {id:'settings',ic:'⚙️',label:'Settings & pricebook'},
+  {id:'help',ic:'❓',label:'How to use this'},
+];
+function renderNav(){
+  const dueCount=S.quotes.filter(q=>['over','due'].includes(fuStatus(q))).length;
+  const cur=(location.hash.slice(1).split('/')[0])||'home';
+  let h='';
+  NAV.forEach(n=>{
+    if(n.sec){ h+=`<div class="sec">${n.sec}</div>`; return; }
+    const badge=(n.badge&&dueCount)?`<span class="badge">${dueCount}</span>`:'';
+    h+=`<a class="nav ${cur===n.id?'on':''}" href="#${n.id}"><span class="ic">${n.ic}</span>${n.label}${badge}</a>`;
+  });
+  $('navwrap').innerHTML=h;
+  $('wsName').firstChild.textContent=S.settings.business||'Your Business';
+  $('wsTrade').textContent=(BOOKS[S.settings.trade]||{}).label+' services';
+  $('wsLogo').textContent=(S.settings.business||'B').trim().charAt(0).toUpperCase();
+}
+
+/* =================== views =================== */
+const VIEWS={};
+function setTitle(t){ $('viewTitle').textContent=t; }
+
+VIEWS.home=function(){
+  setTitle('Home');
+  let pipe=0,risk=0,won=0; const t=todayD();
+  S.quotes.forEach(q=>{ const st=fuStatus(q); const tot=qTotals(q).total;
+    if(st==='won'){ if(new Date(q.wonAt||q.sent||'').getMonth()===new Date().getMonth()) won+=tot; won=won; }
+    if(['quoted','due','over','lead'].includes(st)) pipe+=tot;
+    if(['due','over'].includes(st)) risk+=tot; });
+  const dueList=S.quotes.filter(q=>['due','over'].includes(fuStatus(q)))
+     .sort((a,b)=>addDays(a.sent,a.followDays||3)-addDays(b.sent,b.followDays||3));
+  const upcoming=S.quotes.filter(q=>q.scheduledDate&&q.stage!=='lost').sort((a,b)=>parseD(a.scheduledDate)-parseD(b.scheduledDate)).slice(0,5);
+  const wonMonth=S.quotes.filter(q=>q.stage==='won').reduce((s,q)=>s+qTotals(q).total,0);
+  $('view').innerHTML=`
+    ${S.customers.length===0?`<div class="help">👋 Welcome! Start by adding a customer, or open <b>Settings</b> to put in your business name and prices. Nothing here is online — it all saves on this device.</div>`:''}
+    <div class="tiles">
+      <div class="tile pipe"><div class="n">${money(pipe)}</div><div class="l">Open pipeline</div></div>
+      <div class="tile risk"><div class="n">${money(risk)}</div><div class="l">Needs follow-up now</div></div>
+      <div class="tile win"><div class="n">${money(wonMonth)}</div><div class="l">Won (total)</div></div>
+      <div class="tile"><div class="n">${S.customers.length}</div><div class="l">Customers</div></div>
+    </div>
+    <div class="card"><div class="between"><h2 style="margin:0">🔔 Follow up today</h2><button class="btn sm sec" onclick="location.hash='followups'">See all</button></div>
+      ${dueList.length?`<table><tbody>${dueList.slice(0,6).map(q=>`<tr class="clk" onclick="location.hash='quote/${q.id}'">
+        <td><b>${esc(cust(q.customerId)?cust(q.customerId).name:'—')}</b><div class="muted">${esc(q.title||'Quote')}</div></td>
+        <td>${money(qTotals(q).total)}</td><td><span class="badge2 ${STAGE_BADGE[fuStatus(q)]}">${STAGE_LABEL[fuStatus(q)]}</span></td></tr>`).join('')}</tbody></table>`
+        :`<div class="empty">Nothing to chase right now. 👍</div>`}
+    </div>
+    <div class="card"><h2>📅 Upcoming jobs</h2>
+      ${upcoming.length?`<table><tbody>${upcoming.map(q=>`<tr class="clk" onclick="location.hash='quote/${q.id}'">
+        <td>${fmtD(q.scheduledDate)}</td><td><b>${esc(cust(q.customerId)?cust(q.customerId).name:'—')}</b></td>
+        <td>${esc(q.title||'Job')}</td><td>${money(qTotals(q).total)}</td></tr>`).join('')}</tbody></table>`
+        :`<div class="empty">No jobs scheduled yet. Mark a quote "Won" and set a date to see it here.</div>`}
+    </div>
+    ${S.activity.length?`<div class="card"><h2>Recent activity</h2>${S.activity.slice(0,8).map(a=>`<div style="padding:6px 0;border-bottom:1px solid #f0f3f7"><span class="muted">${new Date(a.when).toLocaleString()}</span> — ${esc(a.text)}</div>`).join('')}</div>`:''}
+  `;
+};
+
+VIEWS.customers=function(){
+  setTitle('Customers'); setTitle('Customers');
+  const term=($('q').value||'').toLowerCase();
+  const list=S.customers.filter(c=>!term||(c.name+' '+c.phone+' '+c.address).toLowerCase().includes(term))
+     .sort((a,b)=>a.name.localeCompare(b.name));
+  $('view').innerHTML=`
+    <div class="between" style="margin-bottom:14px"><h2 style="margin:0">Customers (${S.customers.length})</h2>
+      <button class="btn" onclick="location.hash='customer/new'">＋ Add customer</button></div>
+    <div class="card" style="padding:0">
+      ${list.length?`<table><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th>Quotes</th></tr></thead><tbody>
+        ${list.map(c=>`<tr class="clk" onclick="location.hash='customer/${c.id}'">
+          <td><b>${esc(c.name)}</b></td><td>${esc(c.phone||'')}</td><td>${esc(c.address||'')}</td>
+          <td>${S.quotes.filter(q=>q.customerId===c.id).length}</td></tr>`).join('')}</tbody></table>`
+        :`<div class="empty"><div class="big">No customers yet.</div>Tap <b>Add customer</b> to start. Everything stays on this device.</div>`}
+    </div>`;
+};
+
+VIEWS.customer=function(arg){
+  if(arg==='new'||!arg){ return customerForm(null); }
+  const c=cust(arg); if(!c){ location.hash='customers'; return; }
+  setTitle(c.name);
+  const qs=S.quotes.filter(q=>q.customerId===c.id).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  $('view').innerHTML=`
+    <span class="backlink" onclick="location.hash='customers'">← All customers</span>
+    <div class="card"><div class="between"><h2 style="margin:0">${esc(c.name)}</h2>
+      <div class="flex"><button class="btn sec sm" onclick="customerForm('${c.id}')">Edit</button>
+      <button class="btn sm" onclick="location.hash='newquote/${c.id}'">＋ New quote</button></div></div>
+      <div class="row r3" style="margin-top:6px">
+        <div><label class="f">Phone / email</label>${esc(c.phone||'—')}${c.email?'<br>'+esc(c.email):''}</div>
+        <div><label class="f">Address</label>${esc(c.address||'—')}</div>
+        <div><label class="f">Notes</label>${esc(c.notes||'—')}</div>
+      </div></div>
+    <div class="card" style="padding:0"><div style="padding:14px 16px"><h2 style="margin:0">Quotes & jobs</h2></div>
+      ${qs.length?`<table><thead><tr><th>Job</th><th>Total</th><th>Sent</th><th>Status</th></tr></thead><tbody>
+        ${qs.map(q=>`<tr class="clk" onclick="location.hash='quote/${q.id}'"><td>${esc(q.title||'Quote')}</td>
+        <td>${money(qTotals(q).total)}</td><td>${fmtD(q.sent)}</td>
+        <td><span class="badge2 ${STAGE_BADGE[fuStatus(q)]}">${STAGE_LABEL[fuStatus(q)]}</span></td></tr>`).join('')}</tbody></table>`
+        :`<div class="empty">No quotes yet for ${esc(c.name)}. Tap “New quote”.</div>`}</div>`;
+};
+function customerForm(id){
+  const c=id?cust(id):{name:'',phone:'',email:'',address:'',notes:''};
+  setTitle(id?'Edit customer':'Add customer');
+  $('view').innerHTML=`
+    <span class="backlink" onclick="history.back()">← Back</span>
+    <div class="card" style="max-width:620px">
+      <h2>${id?'Edit':'Add'} customer</h2>
+      <div class="row r2"><div><label class="f">Name *</label><input id="cName" value="${esc(c.name)}"></div>
+        <div><label class="f">Phone</label><input id="cPhone" value="${esc(c.phone)}"></div></div>
+      <div class="row r2" style="margin-top:12px"><div><label class="f">Email</label><input id="cEmail" value="${esc(c.email||'')}"></div>
+        <div><label class="f">Address</label><input id="cAddr" value="${esc(c.address||'')}"></div></div>
+      <div style="margin-top:12px"><label class="f">Notes</label><textarea id="cNotes" rows="2">${esc(c.notes||'')}</textarea></div>
+      <div class="flex" style="margin-top:14px"><button class="btn" onclick="saveCustomer('${id||''}')">Save</button>
+      ${id?`<button class="btn warn sec sm" onclick="delCustomer('${id}')">Delete</button>`:''}</div>
+    </div>`;
+}
+function saveCustomer(id){
+  const name=$('cName').value.trim(); if(!name){ alert('Please enter a name.'); return; }
+  const data={name,phone:$('cPhone').value.trim(),email:$('cEmail').value.trim(),address:$('cAddr').value.trim(),notes:$('cNotes').value.trim()};
+  if(id){ Object.assign(cust(id),data); logAct('Updated customer '+name); save(); location.hash='customer/'+id; }
+  else{ const nc={id:uid(),...data,createdAt:new Date().toISOString()}; S.customers.push(nc); logAct('Added customer '+name); save(); location.hash='customer/'+nc.id; }
+}
+function delCustomer(id){ if(!confirm('Delete this customer and their quotes?'))return; S.customers=S.customers.filter(c=>c.id!==id); S.quotes=S.quotes.filter(q=>q.customerId!==id); save(); location.hash='customers'; }
+
+VIEWS.pipeline=function(){
+  setTitle('Quotes & Jobs');
+  const stages=[['lead','Leads'],['quoted','In pipeline'],['won','Won'],['lost','Lost']];
+  const group=st=>S.quotes.filter(q=>q.stage===st);
+  $('view').innerHTML=`
+    <div class="between" style="margin-bottom:14px"><h2 style="margin:0">Pipeline</h2>
+      <button class="btn" onclick="location.hash='newquote'">＋ New quote</button></div>
+    ${S.quotes.length===0?`<div class="empty"><div class="big">No quotes yet.</div>Create your first quote — it'll show up here and in follow-ups.</div>`:
+    stages.map(([st,lab])=>{ const items=group(st); if(!items.length)return'';
+      return `<div class="card" style="padding:0"><div style="padding:12px 16px" class="between"><h2 style="margin:0">${lab} <span class="muted">(${items.length}) · ${money(items.reduce((s,q)=>s+qTotals(q).total,0))}</span></h2></div>
+        <table><tbody>${items.map(q=>`<tr class="clk" onclick="location.hash='quote/${q.id}'">
+          <td><b>${esc(cust(q.customerId)?cust(q.customerId).name:'—')}</b><div class="muted">${esc(q.title||'Quote')}</div></td>
+          <td>${money(qTotals(q).total)}</td><td>${fmtD(q.sent)}</td>
+          <td><span class="badge2 ${STAGE_BADGE[fuStatus(q)]}">${STAGE_LABEL[fuStatus(q)]}</span></td></tr>`).join('')}</tbody></table></div>`;
+    }).join('')}`;
+};
+
+VIEWS.followups=function(){
+  setTitle('Follow-ups');
+  const list=S.quotes.filter(q=>['over','due','quoted'].includes(fuStatus(q)))
+    .sort((a,b)=>addDays(a.sent,a.followDays||3)-addDays(b.sent,b.followDays||3));
+  const risk=list.filter(q=>['over','due'].includes(fuStatus(q))).reduce((s,q)=>s+qTotals(q).total,0);
+  $('view').innerHTML=`
+    <div class="help">⚠️ You have <b>${money(risk)}</b> in quotes waiting on a callback. This is your daily to-do list — the money most contractors forget about.</div>
+    <div class="card" style="padding:0">
+      ${list.length?`<table><thead><tr><th>Customer</th><th>Job</th><th>Total</th><th>Follow-up</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        ${list.map(q=>{ const st=fuStatus(q); return `<tr class="${st==='over'?'over':(st==='due'?'due':'')}">
+          <td class="clk" onclick="location.hash='quote/${q.id}'"><b>${esc(cust(q.customerId)?cust(q.customerId).name:'—')}</b></td>
+          <td>${esc(q.title||'Quote')}</td><td>${money(qTotals(q).total)}</td>
+          <td>${fmtD(iso(addDays(q.sent||iso(todayD()),q.followDays!=null?q.followDays:3)))}</td>
+          <td><span class="badge2 ${STAGE_BADGE[st]}">${STAGE_LABEL[st]}</span></td>
+          <td><div class="acts"><button class="btn sm ok" onclick="setStage('${q.id}','won')">Won</button>
+            <button class="btn sm sec" onclick="setStage('${q.id}','lost')">Lost</button>
+            <button class="btn sm sec" onclick="snooze('${q.id}')">+3d</button></div></td></tr>`; }).join('')}
+        </tbody></table>`
+        :`<div class="empty">🎉 All caught up — nothing needs a follow-up.</div>`}
+    </div>`;
+};
+function snooze(id){ const q=S.quotes.find(x=>x.id===id); q.followDays=(q.followDays||3)+3; logAct('Snoozed follow-up for '+(cust(q.customerId)||{}).name); save(); router(); }
+function setStage(id,st){ const q=S.quotes.find(x=>x.id===id); q.stage=st; if(st==='won'){q.wonAt=new Date().toISOString(); if(!q.scheduledDate)q.scheduledDate=iso(addDays(iso(todayD()),3));} logAct((st==='won'?'Won':'Marked '+st)+' — '+(cust(q.customerId)||{}).name+' '+money(qTotals(q).total)); save(); router(); }
+
+VIEWS.schedule=function(){
+  setTitle('Schedule');
+  const jobs=S.quotes.filter(q=>q.scheduledDate&&q.stage!=='lost').sort((a,b)=>parseD(a.scheduledDate)-parseD(b.scheduledDate));
+  const byDate={}; jobs.forEach(q=>{ (byDate[q.scheduledDate]=byDate[q.scheduledDate]||[]).push(q); });
+  const dates=Object.keys(byDate).sort();
+  $('view').innerHTML=`
+    <div class="between" style="margin-bottom:14px"><h2 style="margin:0">Schedule</h2><button class="btn sm sec" onclick="location.hash='pipeline'">View pipeline</button></div>
+    ${dates.length?dates.map(d=>`<div class="card"><h2>${fmtD(d)}</h2>
+        ${byDate[d].map(q=>`<div class="between" style="padding:8px 0;border-bottom:1px solid #f0f3f7">
+          <div><b>${esc(cust(q.customerId)?cust(q.customerId).name:'—')}</b> — ${esc(q.title||'Job')}<div class="muted">${esc((cust(q.customerId)||{}).address||'')}</div></div>
+          <div class="flex">${money(qTotals(q).total)} <button class="btn sm sec" onclick="location.hash='quote/${q.id}'">Open</button></div></div>`).join('')}
+      </div>`).join('')
+      :`<div class="empty"><div class="big">No jobs scheduled.</div>Open a quote, mark it “Won”, and set a date to see it here.</div>`}`;
+};
+
+/* ---- new quote builder ---- */
+let draft=null;
+VIEWS.newquote=function(arg){
+  setTitle('New quote');
+  const trade=S.settings.trade;
+  draft={ customerId: (arg&&cust(arg))?arg:'', trade, items:{}, extras:[], tripFee:0, geo:null, miles:null };
+  const c=arg?cust(arg):null;
+  $('view').innerHTML=`
+    <span class="backlink" onclick="history.back()">← Back</span>
+    <div class="card">
+      <h2>Who's this for?</h2>
+      <div class="row r2"><div><label class="f">Customer</label>
+        <select id="qCust">${S.customers.map(x=>`<option value="${x.id}" ${x.id===draft.customerId?'selected':''}>${esc(x.name)}</option>`).join('')}
+          <option value="__new">+ Add a new customer…</option></select></div>
+        <div><label class="f">Trade / pricebook</label><select id="qTrade">${Object.keys(BOOKS).map(k=>`<option value="${k}" ${k===trade?'selected':''}>${BOOKS[k].label}</option>`).join('')}</select></div>
+      </div>
+      <div id="newCustFields" style="display:none;margin-top:12px" class="row r3">
+        <div><label class="f">Name *</label><input id="ncName"></div>
+        <div><label class="f">Phone</label><input id="ncPhone"></div>
+        <div><label class="f">Address</label><input id="ncAddr"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Job address <span class="muted">(adds a trip charge automatically)</span></h2>
+      <div class="row" style="grid-template-columns:1fr auto;align-items:end">
+        <div><input id="qAddr" value="${esc(c?c.address:'')}" placeholder="123 Main St, City, ST"></div>
+        <div><button class="btn sec" id="qLookup" style="height:40px">🔎 Look up</button></div></div>
+      <div class="muted" id="qAddrStatus" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <h2>The work</h2>
+      <div id="qCat"></div>
+      <div class="row r3" style="margin-top:12px">
+        <div><input id="qCiName" placeholder="Custom item (optional)"></div>
+        <div><input id="qCiPrice" type="number" placeholder="Price"></div>
+        <div><button class="btn sec" id="qAddCi" style="width:100%;height:40px">+ Add item</button></div></div>
+    </div>
+    <div class="card">
+      <h2>Finish</h2>
+      <div class="row r4">
+        <div><label class="f">Discount $</label><input id="qDisc" type="number" value="0"></div>
+        <div><label class="f">Deposit %</label><input id="qDep" type="number" value="${S.settings.depositPct}"></div>
+        <div><label class="f">Follow up in (days)</label><input id="qFu" type="number" value="3"></div>
+        <div><label class="f">Stage</label><select id="qStage"><option value="quoted">Quoted (needs follow-up)</option><option value="lead">Lead</option><option value="won">Won</option></select></div>
+      </div>
+      <div style="margin-top:12px"><label class="f">Note to customer</label><textarea id="qNotes" rows="2">Thanks for the opportunity! Includes parts, labor, and cleanup.</textarea></div>
+      <div class="between" style="margin-top:14px"><div class="flex"><button class="btn" id="qSave">Save quote</button>
+        <button class="btn gold" id="qSavePdf">Save & make PDF</button></div>
+        <div id="qTot" style="font-size:16px"></div></div>
+    </div>`;
+  renderQCat();
+  $('qTrade').onchange=()=>{ draft.trade=$('qTrade').value; draft.items={}; renderQCat(); };
+  $('qCust').onchange=()=>{ const v=$('qCust').value; $('newCustFields').style.display=v==='__new'?'grid':'none';
+     if(v!=='__new'){ const cc=cust(v); if(cc)$('qAddr').value=cc.address||''; } };
+  $('qLookup').onclick=qLookupAddr;
+  $('qAddCi').onclick=()=>{ const n=$('qCiName').value.trim(),p=parseFloat($('qCiPrice').value); if(!n||isNaN(p)){alert('Enter item name and price.');return;} draft.extras.push({name:n,price:p,qty:1}); $('qCiName').value='';$('qCiPrice').value=''; renderQCat(); };
+  $('qSave').onclick=()=>saveQuote(false); $('qSavePdf').onclick=()=>saveQuote(true);
+  ['qDisc','qDep'].forEach(id=>$(id).addEventListener('input',qRecalc));
+  if(S.customers.length===0){ $('qCust').value='__new'; $('newCustFields').style.display='grid'; }
+};
+function renderQCat(){
+  const items=book(draft.trade);
+  let h=`<div class="catrow" style="font-weight:700;color:#6b7b8a;font-size:11px;text-transform:uppercase"><div></div><div>Service</div><div>Qty</div><div>Price</div></div>`;
+  items.forEach((it,i)=>{ const on=draft.items[i]; h+=`<div class="catrow">
+    <div><input type="checkbox" data-i="${i}" ${on?'checked':''}></div><div>${esc(it.name)}</div>
+    <div><input type="number" min="1" value="${on?on.qty:1}" data-q="${i}"></div>
+    <div><input type="number" step="0.01" value="${on?on.price:it.price}" data-p="${i}"></div></div>`; });
+  if(draft.extras.length) h+=draft.extras.map((e,i)=>`<div class="catrow"><div>✓</div><div>${esc(e.name)} <span class="muted">(custom)</span></div><div style="text-align:center">${e.qty}</div><div>${money2(e.price)}</div></div>`).join('');
+  $('qCat').innerHTML=h;
+  $('qCat').querySelectorAll('input').forEach(el=>el.addEventListener('input',syncQItems));
+  syncQItems();
+}
+function syncQItems(){
+  const items=book(draft.trade); draft.items={};
+  $('qCat').querySelectorAll('.catrow input[type=checkbox]').forEach(chk=>{ if(chk.checked){ const i=chk.dataset.i;
+    draft.items[i]={name:items[i].name, qty:Math.max(1,parseInt($('qCat').querySelector(`[data-q="${i}"]`).value)||1), price:parseFloat($('qCat').querySelector(`[data-p="${i}"]`).value)||0}; } });
+  qRecalc();
+}
+function draftItemsArr(){ const arr=Object.values(draft.items); draft.extras.forEach(e=>arr.push(e)); if(draft.tripFee>0)arr.push({name:'Trip charge'+(draft.miles?` (${draft.miles} mi)`:''),qty:1,price:draft.tripFee}); return arr; }
+function qRecalc(){ const q={items:draftItemsArr(),tripFee:0,discount:parseFloat($('qDisc').value)||0,depositPct:parseFloat($('qDep').value)||0}; const t=qTotals(q); if($('qTot'))$('qTot').innerHTML=`Total: <b style="color:var(--accent)">${money2(t.total)}</b>`; }
+async function qLookupAddr(){
+  const a=$('qAddr').value.trim(); if(!a){$('qAddrStatus').textContent='Type an address first.';return;}
+  $('qAddrStatus').textContent='Looking up…';
+  try{ const g=await geocode(a); draft.geo={lat:+g.lat,lon:+g.lon,display:g.display_name};
+    if(!S.settings.shopGeo){ try{ const sg=await geocode(S.settings.shopZip); S.settings.shopGeo={lat:+sg.lat,lon:+sg.lon}; save(); }catch(e){} }
+    if(S.settings.shopGeo){ draft.miles=Math.round(haversine(S.settings.shopGeo,draft.geo)*10)/10; draft.tripFee=tripFeeFor(draft.miles); }
+    $('qAddr').value=g.display_name;
+    $('qAddrStatus').innerHTML=`<span style="color:var(--ok)">✓ Verified</span>`+(draft.miles!=null?` · ${draft.miles} mi from shop · trip charge ${money2(draft.tripFee)}`:'');
+    qRecalc();
+  }catch(e){ draft.tripFee=0; $('qAddrStatus').innerHTML='<span style="color:var(--warn)">Could not verify (offline or no match). The typed address will still be used.</span>'; qRecalc(); }
+}
+function saveQuote(makePdf){
+  let cid=$('qCust').value;
+  if(cid==='__new'){ const n=$('ncName').value.trim(); if(!n){alert('Enter the new customer name.');return;}
+    const nc={id:uid(),name:n,phone:$('ncPhone').value.trim(),address:$('ncAddr').value.trim()||$('qAddr').value.trim(),email:'',notes:'',createdAt:new Date().toISOString()};
+    S.customers.push(nc); cid=nc.id; }
+  const items=Object.values(draft.items).concat(draft.extras);
+  if(!items.length){ alert('Add at least one service.'); return; }
+  const title=items.map(i=>i.name).slice(0,2).join(', ')+(items.length>2?'…':'');
+  const q={ id:uid(), customerId:cid, trade:draft.trade, title, items, tripFee:draft.tripFee, addr:$('qAddr').value.trim(),
+    discount:parseFloat($('qDisc').value)||0, depositPct:parseFloat($('qDep').value)||0, followDays:parseInt($('qFu').value)||3,
+    stage:$('qStage').value, notes:$('qNotes').value, sent:iso(todayD()), createdAt:new Date().toISOString() };
+  if(q.stage==='won'){ q.wonAt=new Date().toISOString(); q.scheduledDate=iso(addDays(iso(todayD()),3)); }
+  S.quotes.push(q); logAct('Created quote for '+((cust(cid)||{}).name||'')+' — '+money(qTotals(q).total)); save();
+  if(makePdf) showDoc(q,'estimate'); else location.hash='quote/'+q.id;
+}
+
+VIEWS.quote=function(arg){
+  const q=S.quotes.find(x=>x.id===arg); if(!q){ location.hash='pipeline'; return; }
+  const c=cust(q.customerId)||{}; setTitle('Quote — '+(c.name||'')); const t=qTotals(q); const st=fuStatus(q);
+  $('view').innerHTML=`
+    <span class="backlink" onclick="location.hash='customer/${q.customerId}'">← ${esc(c.name||'Customer')}</span>
+    <div class="card"><div class="between"><h2 style="margin:0">${esc(q.title||'Quote')}</h2>
+      <span class="badge2 ${STAGE_BADGE[st]}">${STAGE_LABEL[st]}</span></div>
+      <div class="muted">${esc(c.name||'')} · ${esc(q.addr||c.address||'')}</div>
+      <table style="margin-top:12px"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead><tbody>
+        ${q.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty||1}</td><td>${money2(i.price)}</td><td>${money2((i.qty||1)*i.price)}</td></tr>`).join('')}
+        ${q.tripFee?`<tr><td>Trip charge</td><td>1</td><td>${money2(q.tripFee)}</td><td>${money2(q.tripFee)}</td></tr>`:''}
+      </tbody></table>
+      <div style="text-align:right;margin-top:10px">Subtotal ${money2(t.sub)} · Tax ${money2(t.tax)} · <b style="font-size:17px;color:var(--accent)">Total ${money2(t.total)}</b>
+        <div class="muted">Deposit to schedule: ${money2(t.dep)}</div></div>
+    </div>
+    <div class="card"><div class="flex">
+      <button class="btn gold" onclick="showDoc(S.quotes.find(x=>x.id==='${q.id}'),'estimate')">📄 Estimate PDF</button>
+      <button class="btn gold" onclick="showDoc(S.quotes.find(x=>x.id==='${q.id}'),'invoice')">🧾 Invoice PDF</button>
+      <button class="btn ok sm" onclick="setStage('${q.id}','won');location.hash='quote/${q.id}'">Mark Won</button>
+      <button class="btn sec sm" onclick="setStage('${q.id}','lost');location.hash='quote/${q.id}'">Mark Lost</button>
+      <button class="btn sec sm" onclick="location.hash='newquote/${q.customerId}'">+ Another quote</button>
+      <button class="btn warn sec sm" onclick="delQuote('${q.id}')">Delete</button>
+    </div>
+    <div class="row r2" style="margin-top:14px">
+      <div><label class="f">Scheduled date</label><input type="date" value="${q.scheduledDate||''}" onchange="S.quotes.find(x=>x.id==='${q.id}').scheduledDate=this.value;save();"></div>
+      <div><label class="f">Follow up in (days from sent)</label><input type="number" value="${q.followDays!=null?q.followDays:3}" onchange="S.quotes.find(x=>x.id==='${q.id}').followDays=parseInt(this.value)||0;save();"></div>
+    </div></div>`;
+};
+function delQuote(id){ if(!confirm('Delete this quote?'))return; const q=S.quotes.find(x=>x.id===id); const cid=q.customerId; S.quotes=S.quotes.filter(x=>x.id!==id); save(); location.hash='customer/'+cid; }
+
+/* ---- document (estimate/invoice) ---- */
+function showDoc(q,mode){
+  const c=cust(q.customerId)||{}; const t=qTotals(q); const b=BOOKS[q.trade]||BOOKS.hvac;
+  const now=new Date(); const pad=n=>String(n).padStart(2,'0');
+  const no=(mode==='invoice'?'INV':'EST')+'-'+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'-'+pad(now.getHours())+pad(now.getMinutes());
+  const rows=q.items.map(i=>`<tr><td>${esc(i.name)}</td><td class="c">${i.qty||1}</td><td class="r">${money2(i.price)}</td><td class="r">${money2((i.qty||1)*i.price)}</td></tr>`).join('')
+    +(q.tripFee?`<tr><td>Trip charge</td><td class="c">1</td><td class="r">${money2(q.tripFee)}</td><td class="r">${money2(q.tripFee)}</td></tr>`:'');
+  const foot=mode==='invoice'?`<p><b>Amount due: ${money2(t.total)}</b> — payable on receipt. Thank you!</p>`
+    :`<p>Valid 30 days. A ${q.depositPct!=null?q.depositPct:S.settings.depositPct}% deposit (${money2(t.dep)}) reserves your spot.</p>`;
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+    body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:30px auto;padding:0 22px;line-height:1.5}
+    .top{display:flex;justify-content:space-between;border-bottom:4px solid #1a6feb;padding-bottom:12px;margin-bottom:18px}
+    .co{font-size:18px;font-weight:bold}.muted{color:#666;font-size:12px}h1{color:#1a6feb;margin:0;font-size:24px}
+    .grid{display:flex;justify-content:space-between;gap:18px;margin:12px 0 16px;font-size:13px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a6feb;color:#fff;text-align:left;padding:8px 10px}
+    td{padding:8px 10px;border-bottom:1px solid #eee}.c{text-align:center}.r{text-align:right}
+    .tot{margin-left:auto;width:260px;margin-top:12px}.tot div{display:flex;justify-content:space-between;padding:3px 0}
+    .g{border-top:2px solid #1a6feb;margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:#1a6feb}
+    .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid #1a6feb;padding:9px 13px;font-size:13px}
+  </style></head><body>
+    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured</div></div>
+      <div style="text-align:right"><h1>${mode==='invoice'?'INVOICE':'ESTIMATE'}</h1><div class="muted">${no}<br>${now.toLocaleDateString()}</div></div></div>
+    <div class="grid"><div><div class="muted">BILL TO</div><b>${esc(c.name||'')}</b><br>${esc(c.phone||'')}</div>
+      <div><div class="muted">SERVICE ADDRESS</div>${esc(q.addr||c.address||'')}</div></div>
+    <table><thead><tr><th>Description</th><th class="c">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="tot"><div><span>Subtotal</span><span>${money2(t.sub)}</span></div>${t.disc>0?`<div><span>Discount</span><span>-${money2(t.disc)}</span></div>`:''}
+      <div><span>Tax (${S.settings.taxRate}%)</span><span>${money2(t.tax)}</span></div><div class="g"><span>${mode==='invoice'?'Total due':'Total'}</span><span>${money2(t.total)}</span></div></div>
+    <div class="notes">${esc(q.notes||'')}</div>${foot}</body></html>`;
+  $('mTitle').textContent=(mode==='invoice'?'Invoice':'Estimate')+' — '+(c.name||'');
+  $('mFrame').srcdoc=html; $('overlay').classList.add('open');
+}
+
+/* ---- settings ---- */
+VIEWS.settings=function(){
+  setTitle('Settings & pricebook'); const tr=S.settings.trade;
+  $('view').innerHTML=`
+    <div class="card" style="max-width:680px"><h2>Your business</h2>
+      <div class="row r2"><div><label class="f">Business name</label><input id="sBiz" value="${esc(S.settings.business)}"></div>
+        <div><label class="f">Main trade</label><select id="sTrade">${Object.keys(BOOKS).map(k=>`<option value="${k}" ${k===tr?'selected':''}>${BOOKS[k].label}</option>`).join('')}</select></div></div>
+      <div class="row r3" style="margin-top:12px"><div><label class="f">Shop ZIP / city</label><input id="sShop" value="${esc(S.settings.shopZip)}"></div>
+        <div><label class="f">Tax rate %</label><input id="sTax" type="number" value="${S.settings.taxRate}"></div>
+        <div><label class="f">Default deposit %</label><input id="sDep" type="number" value="${S.settings.depositPct}"></div></div>
+      <button class="btn" style="margin-top:14px" onclick="saveSettings()">Save business info</button>
+    </div>
+    <div class="card"><div class="between"><h2 style="margin:0">Pricebook — ${BOOKS[tr].label}</h2><button class="btn sm sec" onclick="addBookRow()">+ Add service</button></div>
+      <p class="muted">These are the services and prices that show up when you build a quote. Edit freely.</p>
+      <div id="bookRows"></div>
+      <button class="btn" style="margin-top:12px" onclick="saveBook()">Save pricebook</button>
+    </div>
+    <div class="card"><h2>Your data</h2><p class="muted">Everything is stored on this device only. Back it up or move it to a new phone here.</p>
+      <div class="flex"><button class="btn sec sm" onclick="exportData()">⬇ Export backup</button>
+        <label class="btn sec sm" style="cursor:pointer">⬆ Import backup<input type="file" id="impFile" accept=".json" style="display:none"></label>
+        <button class="btn warn sec sm" onclick="resetData()">Reset everything</button></div>
+    </div>`;
+  renderBookRows();
+  $('impFile').onchange=importData;
+};
+function renderBookRows(){ const rows=book(S.settings.trade);
+  $('bookRows').innerHTML=rows.map((r,i)=>`<div class="row" style="grid-template-columns:1fr 130px 40px;margin-bottom:8px">
+    <input value="${esc(r.name)}" data-bn="${i}"><input type="number" step="0.01" value="${r.price}" data-bp="${i}">
+    <button class="btn warn sec sm" onclick="delBookRow(${i})">✕</button></div>`).join(''); }
+function addBookRow(){ S.pricebook[S.settings.trade]=book(S.settings.trade).concat([{name:'New service',price:0}]); save(); renderBookRows(); }
+function delBookRow(i){ const b=book(S.settings.trade).slice(); b.splice(i,1); S.pricebook[S.settings.trade]=b; save(); renderBookRows(); }
+function saveBook(){ const b=[]; $('bookRows').querySelectorAll('[data-bn]').forEach(inp=>{ const i=inp.dataset.bn; b.push({name:inp.value.trim()||'Service',price:parseFloat($('bookRows').querySelector(`[data-bp="${i}"]`).value)||0}); }); S.pricebook[S.settings.trade]=b; logAct('Updated pricebook'); save(); alert('Pricebook saved.'); }
+function saveSettings(){ S.settings.business=$('sBiz').value.trim()||'Your Business'; const nt=$('sTrade').value; S.settings.trade=nt; S.settings.shopZip=$('sShop').value.trim(); S.settings.shopGeo=null; S.settings.taxRate=parseFloat($('sTax').value)||0; S.settings.depositPct=parseFloat($('sDep').value)||0; logAct('Updated business settings'); save(); renderNav(); router(); }
+function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='business-hub-backup.json'; a.click(); }
+function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.settings)throw 0; S=d; if(!S.activity)S.activity=[]; save(); alert('Backup imported.'); renderNav(); location.hash='home'; router(); }catch(err){ alert('That file was not a valid backup.'); } }; r.readAsText(f); }
+function resetData(){ if(confirm('Erase all data on this device and start fresh?')){ localStorage.removeItem(KEY); S=loadState(); save(); renderNav(); location.hash='home'; router(); } }
+
+/* ---- help ---- */
+VIEWS.help=function(){ setTitle('How to use this');
+  $('view').innerHTML=`<div class="card" style="max-width:720px;font-size:16px;line-height:1.7">
+    <h2>The 4 things you'll do most</h2>
+    <p><b>1. Add a customer.</b> Tap <b>Customers → Add customer</b>. Just their name and phone is enough.</p>
+    <p><b>2. Make a quote.</b> Tap <b>＋ New quote</b> at the top. Pick the customer, check the work, type the address and tap “Look up”, then <b>Save & make PDF</b>. Text the PDF to your customer.</p>
+    <p><b>3. Follow up.</b> The <b>Follow-ups</b> tab (red number in the sidebar) shows exactly who to call back today, and how much money is waiting.</p>
+    <p><b>4. Win the job.</b> Open the quote and tap <b>Mark Won</b>, then set a date — it shows up in your <b>Schedule</b>.</p>
+    <div class="help">Everything saves on this device and works with no signal. Use <b>Settings → Export backup</b> now and then to keep a copy safe. Stuck? Call the person who set this up for you — you can't break it.</div>
+  </div>`;
+};
+
+/* =================== boot =================== */
+function router(){ const h=location.hash.slice(1)||'home'; const [v,arg]=h.split('/'); (VIEWS[v]||VIEWS.home)(arg); renderNav(); closeSide(); window.scrollTo(0,0); if($('view'))$('view').scrollTop=0; }
+function closeSide(){ $('sidebar').classList.remove('open'); $('scrim').style.display='none'; }
+$('hamburger').onclick=()=>{ const o=$('sidebar').classList.toggle('open'); $('scrim').style.display=o?'block':'none'; };
+$('scrim').onclick=closeSide;
+$('newBtn').onclick=()=>location.hash='newquote';
+$('q').addEventListener('input',()=>{ if((location.hash.slice(1).split('/')[0])==='customers')VIEWS.customers(); else location.hash='customers'; });
+$('mClose').onclick=()=>$('overlay').classList.remove('open');
+$('overlay').onclick=e=>{ if(e.target===$('overlay'))$('overlay').classList.remove('open'); };
+$('mPrint').onclick=()=>{ $('mFrame').contentWindow.focus(); $('mFrame').contentWindow.print(); };
+window.addEventListener('hashchange',router);
+renderNav(); router();
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>

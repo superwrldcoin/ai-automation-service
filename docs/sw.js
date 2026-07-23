@@ -1,7 +1,8 @@
 /* Simple offline cache so the tools work at a job site with no signal. */
-const CACHE = 'quotes-cache-v1';
+const CACHE = 'quotes-cache-v2';
 const ASSETS = [
-  './', './index.html', './demo.html', './tracker.html', './why-us.html',
+  './', './index.html', './demo.html', './tracker.html', './why-us.html', './crm.html', './how-to.html',
+  './manifest.json', './manifest-tracker.json', './manifest-crm.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 
@@ -30,6 +31,6 @@ self.addEventListener('fetch', e => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       return res;
-    }).catch(() => caches.match('./demo.html')))
+    }).catch(() => caches.match(req).then(h => h || caches.match('./'))))
   );
 });
