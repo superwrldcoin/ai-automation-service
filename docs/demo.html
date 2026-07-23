@@ -60,12 +60,16 @@
   .toggle button.on { background:var(--accent); color:#fff; }
   .foot { text-align:center; color:#5a6b7b; font-size:13px; padding:26px 0 40px; }
   a { color:var(--accent); }
+  .assist { border-color:var(--gold)!important; }
+  .assist .tagline { display:inline-block; background:var(--gold); color:#3a2e10; font-weight:700;
+        font-size:10.5px; letter-spacing:.4px; padding:2px 8px; border-radius:20px; vertical-align:middle; margin-left:6px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 <header>
   <div class="wrap">
-    <nav><a href="index.html">&larr; Home</a><a href="why-us.html">Why me vs. the tools</a></nav>
+    <nav><a href="index.html">&larr; Home</a><a href="tracker.html">Follow-up tracker</a><a href="why-us.html">Why me vs. the tools</a></nav>
     <h1 style="margin-top:14px">Build a customer quote in under a minute</h1>
     <p>Pick your trade, choose the work, type the address — and watch a clean, personalized
        estimate build itself. Try the <b>Look up address</b> button: it verifies the address
@@ -74,6 +78,23 @@
 </header>
 
 <div class="wrap">
+
+  <!-- AI quote assistant -->
+  <div class="panel assist">
+    <h2>Auto-build from a file or description <span class="tagline">SMART ADD-ON</span></h2>
+    <p class="hint">Paste a job description, or upload a file — a CSV price list / job sheet, or a
+       <b>.txt / .pdf</b> scope of work. It reads the content, matches it to your pricebook, and
+       pre-fills the quote below. <i>In production I wire this to AI (Claude) so it reads any PDF,
+       email, or inspection report into a full itemized quote — even items not in your pricebook.</i></p>
+    <textarea id="aiText" rows="3" placeholder="e.g. Customer Dana Whitmore at 1012 NE 1st Ave, Gainesville FL needs an AC tune-up, a new smart thermostat, and duct cleaning before summer."></textarea>
+    <div class="cta-row mt">
+      <label class="mini" style="height:38px;display:inline-flex;align-items:center;cursor:pointer">📎 Upload file
+        <input type="file" id="aiFile" accept=".csv,.txt,.pdf" style="display:none">
+      </label>
+      <button class="mini" id="analyze" style="height:38px">✨ Analyze &amp; pre-fill quote</button>
+      <span id="aiStatus" style="font-size:13px;color:#5a6b7b"></span>
+    </div>
+  </div>
 
   <!-- business setup -->
   <div class="panel">
@@ -394,6 +415,91 @@ $('overlay').onclick = e=>{ if(e.target===$('overlay')) $('overlay').classList.r
 $('tEst').onclick = ()=>{ docMode='estimate'; setToggle(); refreshDoc(); };
 $('tInv').onclick = ()=>{ docMode='invoice'; setToggle(); refreshDoc(); };
 $('mPrint').onclick = ()=>{ $('mFrame').contentWindow.focus(); $('mFrame').contentWindow.print(); };
+
+/* ================= SMART ADD-ON: analyze file / description → pre-fill quote ================= */
+/* keyword synonyms so plain-English descriptions map to pricebook items */
+const SYN = {
+  'AC tune-up & maintenance':['tune','tuneup','maintenance','not cooling','service the ac'],
+  'Refrigerant recharge (per lb)':['refrigerant','freon','recharge','low coolant','low on coolant'],
+  'New 3-ton AC system installed':['new system','new ac','replace ac','install ac','new unit','replace the unit'],
+  'Smart thermostat install':['thermostat','nest','ecobee'],
+  'Capacitor replacement':['capacitor'],'Duct cleaning':['duct'],'Blower motor replacement':['blower'],
+  'Condenser fan motor':['condenser','fan motor'],'Diagnostic / service call':['diagnostic','service call','not working','inspect'],
+  '40-gal water heater install':['water heater'],'Tankless water heater install':['tankless'],
+  'Main drain cleaning':['drain','clog','clogged','snake the'],'Toilet replacement':['toilet'],
+  'Faucet replacement':['faucet'],'Sump pump replacement':['sump'],'Leak detection':['leak'],
+  'Repipe (per fixture)':['repipe','re-pipe'],'Service call / diagnostic':['service call','diagnostic','inspect'],
+  '200A panel upgrade':['panel','breaker box','service upgrade'],'EV charger install':['ev charger','ev charging','tesla charger','car charger'],
+  'Ceiling fan install':['ceiling fan'],'Recessed lighting (per fixture)':['recessed','can light','lighting'],
+  'Whole-home surge protector':['surge'],'Generator transfer switch':['generator','transfer switch'],
+  'Outlet / switch replacement':['outlet','receptacle','gfci','light switch'],
+  'Full reroof (avg home)':['reroof','new roof','replace roof','roof replacement'],
+  'Shingle replacement (per square)':['shingle'],'Minor roof repair':['roof repair','repair roof','roof leak'],
+  'Gutter replacement (per ft)':['gutter'],'Skylight install':['skylight'],
+  'Attic ventilation':['attic','ventilation','soffit vent'],'Roof inspection':['roof inspection','inspect roof'],
+  'Flashing repair':['flashing'],
+};
+function parseCSV(text){
+  const rows=[]; let f='',row=[],q=false; text=text.replace(/\r\n?/g,'\n');
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f='';} else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';} else f+=c; } }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  if(!rows.length) return [];
+  const head=rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.some(c=>c.trim())).map(r=>{const o={};head.forEach((h,i)=>o[h]=(r[i]??'').trim());return o;});
+}
+async function readFile(file){
+  const ext=file.name.toLowerCase().split('.').pop();
+  if(ext==='pdf'){
+    if(!window.pdfjsLib) throw new Error('PDF reader not loaded — paste the text instead.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const buf=await file.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data:buf}).promise; let t='';
+    for(let p=1;p<=pdf.numPages;p++){ const pg=await pdf.getPage(p); const c=await pg.getTextContent(); t+=c.items.map(x=>x.str).join(' ')+'\n'; }
+    return {type:'text',text:t};
+  }
+  const text=await file.text();
+  return {type: ext==='csv'?'csv':'text', text};
+}
+function applyCSV(text){
+  const rows=parseCSV(text); if(!rows.length) return 0;
+  const cols=Object.keys(rows[0]); const find=re=>cols.find(c=>re.test(c.toLowerCase()));
+  const cCust=find(/name|customer|client/),cAddr=find(/address|property|site|location/),cCon=find(/phone|email|contact/),
+        cItem=find(/item|service|descr|work|task|job/),cQty=find(/qty|quantit/),cPrice=find(/price|rate|amount|cost|total/);
+  if(cCust&&rows[0][cCust])$('cust').value=rows[0][cCust];
+  if(cAddr&&rows[0][cAddr])$('addr').value=rows[0][cAddr];
+  if(cCon&&rows[0][cCon])$('contact').value=rows[0][cCon];
+  let added=0;
+  rows.forEach(r=>{ const name=(cItem?r[cItem]:r[cols[0]])||''; const price=cPrice?parseFloat(String(r[cPrice]).replace(/[$,]/g,'')):NaN;
+    if(name&&!isNaN(price)){ extras.push({name,price,qty:cQty?(parseInt(r[cQty])||1):1}); added++; } });
+  return added;
+}
+function matchText(text){
+  const low=' '+text.toLowerCase()+' '; const b=BOOKS[$('trade').value]; let matched=0;
+  b.items.forEach((it,i)=>{
+    const label=it[0]; const syns=SYN[label]||[];
+    const kw=label.toLowerCase().replace(/\(.*?\)/g,'').split(/[^a-z]+/).filter(w=>w.length>3&&!['install','replacement','service','call','home','with','per'].includes(w));
+    if(syns.some(s=>low.includes(s))||kw.some(w=>low.includes(w))){ const chk=$('cat').querySelector(`.chk[data-i="${i}"]`); if(chk&&!chk.checked){chk.checked=true;matched++;} }
+  });
+  const addrM=text.match(/\d{1,6}\s+[\w.]+(?:\s+\w+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|blvd|ln|lane|ct|court|way|pl|place)\b[^,\n]*(?:,\s*[\w\s]+){0,2}/i);
+  if(addrM)$('addr').value=addrM[0].trim();
+  const nameM=text.match(/(?:customer|client|for)\s*[:\-]?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+  if(nameM)$('cust').value=nameM[1];
+  return matched;
+}
+async function analyze(){
+  let text=$('aiText').value.trim(); const file=$('aiFile').files[0]; let csvAdded=0;
+  $('aiStatus').textContent='Analyzing…';
+  try{
+    if(file){ const r=await readFile(file); if(r.type==='csv'){csvAdded=applyCSV(r.text);text+=' '+r.text;} else text+=' '+r.text; }
+    if(!text.trim()){ $('aiStatus').innerHTML='<span class="warn">Paste a description or upload a file first.</span>'; return; }
+    const matched=matchText(text); recalc();
+    $('aiStatus').innerHTML=`<span class="ok">✓ Pre-filled</span> — ${matched} service(s) matched`+(csvAdded?`, ${csvAdded} item(s) imported from CSV`:'')+`. Review below, then Generate.`;
+    $('cat').scrollIntoView({behavior:'smooth',block:'center'});
+  }catch(e){ $('aiStatus').innerHTML='<span class="warn">'+e.message+'</span>'; }
+}
+$('analyze').onclick=analyze;
+$('aiFile').onchange=e=>{ const f=e.target.files[0]; if(f){ $('aiStatus').textContent='File ready: '+f.name+' — click Analyze.'; } };
 
 renderCatalog();
 </script>

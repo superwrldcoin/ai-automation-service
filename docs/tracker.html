@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote follow-up tracker — stop leaving money on the table</title>
+<style>
+  :root { --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --bg:#f7f9fc; --ok:#1a8f4c; --warn:#c0392b; --line:#e6ebf1; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); line-height:1.5; }
+  .wrap { max-width:1020px; margin:0 auto; padding:0 18px; }
+  header { background:linear-gradient(135deg,#12212e,#1a3d5c); color:#fff; padding:34px 0 26px; }
+  header h1 { margin:0 0 6px; font-size:24px; }
+  header p { margin:0; opacity:.9; max-width:700px; font-size:15px; }
+  nav a { color:#cfe0ff; text-decoration:none; font-size:14px; margin-right:16px; }
+  .tiles { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:18px 0; }
+  @media(max-width:760px){ .tiles{grid-template-columns:1fr 1fr;} }
+  .tile { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .tile .n { font-size:26px; font-weight:800; } .tile .l { font-size:12px; color:#6b7b8a; margin-top:2px; }
+  .tile.risk .n { color:var(--warn); } .tile.win .n { color:var(--ok); } .tile.pipe .n { color:var(--accent); }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin:16px 0; }
+  .panel h2 { margin:0 0 12px; font-size:16px; }
+  .row { display:grid; gap:10px; grid-template-columns:1.4fr 1.6fr .9fr .9fr .9fr auto; align-items:end; }
+  @media(max-width:820px){ .row{grid-template-columns:1fr 1fr;} }
+  label.f { display:block; font-size:11px; font-weight:600; color:#41586b; margin:0 0 3px; }
+  input, select { font:inherit; font-size:14px; width:100%; padding:9px 10px; border:1px solid #d4dde6; border-radius:8px; background:#fff; }
+  button { font:inherit; font-weight:600; border:0; border-radius:8px; cursor:pointer; }
+  .add { background:var(--accent); color:#fff; padding:10px 18px; height:38px; }
+  .mini { background:#eef2f7; color:var(--ink); padding:6px 10px; font-size:12px; }
+  .mini:hover { background:#e2e9f1; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th { text-align:left; background:#f7f9fc; color:#6b7b8a; font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:9px 10px; border-bottom:2px solid var(--line); }
+  td { padding:10px; border-bottom:1px solid #f0f3f7; vertical-align:middle; }
+  tr.overdue { background:#fdf1f0; } tr.due { background:#fff8ec; }
+  .badge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+  .b-new{background:#e7effd;color:#1a6feb;} .b-due{background:#fdefd0;color:#a5730c;}
+  .b-over{background:#fbe0dd;color:#c0392b;} .b-won{background:#e2f2e8;color:#1a8f4c;} .b-lost{background:#eceff2;color:#7c8b99;}
+  .acts { display:flex; gap:5px; flex-wrap:wrap; }
+  .foot { text-align:center; color:#5a6b7b; font-size:13px; padding:26px 0 44px; }
+  .callout { background:#f5f0e6; border-left:5px solid var(--gold); border-radius:8px; padding:14px 18px; font-size:14px; margin:4px 0 8px; }
+  a { color:var(--accent); }
+  .muted { color:#8797a5; font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav><a href="index.html">&larr; Home</a><a href="demo.html">Quote builder</a><a href="why-us.html">Why me</a></nav>
+    <h1 style="margin-top:14px">Quote follow-up tracker</h1>
+    <p>Contractors lose roughly <b>20% of revenue</b> to verbal quotes that never get chased. This
+       logs every quote, flags exactly who to follow up with today, and shows the money you're
+       leaving on the table. Everything saves on <b>your device</b> — nothing goes to the cloud.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tiles">
+    <div class="tile pipe"><div class="n" id="tPipe">$0</div><div class="l">Open pipeline</div></div>
+    <div class="tile risk"><div class="n" id="tRisk">$0</div><div class="l">Awaiting follow-up (at risk)</div></div>
+    <div class="tile win"><div class="n" id="tWon">$0</div><div class="l">Won</div></div>
+    <div class="tile"><div class="n" id="tToday">0</div><div class="l">Need follow-up today</div></div>
+  </div>
+
+  <div class="callout" id="nudge"></div>
+
+  <div class="panel">
+    <h2>Log a quote</h2>
+    <div class="row">
+      <div><label class="f">Customer</label><input id="fCust" placeholder="Dana Whitmore"></div>
+      <div><label class="f">Job / service</label><input id="fJob" placeholder="AC tune-up + smart thermostat"></div>
+      <div><label class="f">Quote $</label><input id="fAmt" type="number" step="0.01" placeholder="454"></div>
+      <div><label class="f">Sent</label><input id="fDate" type="date"></div>
+      <div><label class="f">Follow up in (days)</label><input id="fDays" type="number" value="3" min="0"></div>
+      <div><button class="add" id="fAdd">+ Add</button></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="display:flex;justify-content:space-between;align-items:center">
+      <span>Your quotes</span>
+      <span><button class="mini" id="seed">Load sample data</button> <button class="mini" id="clear">Clear all</button></span>
+    </h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Customer</th><th>Job</th><th>Quote</th><th>Sent</th><th>Follow-up</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="muted" id="empty" style="display:none">No quotes yet — log one above, or load the sample data.</p>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="wrap">A working sample of the retainer tools I build. <a href="why-us.html">Why own it vs. rent &rarr;</a></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = 'fst_quotes_v1';
+let data = [];
+
+function load(){ try { data = JSON.parse(localStorage.getItem(KEY)||'[]'); } catch(e){ data=[]; } }
+function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+function money(n){ return '$'+Math.round(n).toLocaleString('en-US'); }
+function today(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+function parseD(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+function fmtD(s){ return parseD(s).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function addDays(s,n){ const d=parseD(s); d.setDate(d.getDate()+n); return d; }
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function statusOf(q){
+  if(q.status==='won') return 'won';
+  if(q.status==='lost') return 'lost';
+  const due = addDays(q.sent, q.days);
+  const t = today();
+  if(due < t) return 'overdue';
+  if(due.getTime() === t.getTime()) return 'due';
+  return 'new';
+}
+
+function render(){
+  const tb=$('rows'); tb.innerHTML='';
+  let pipe=0, risk=0, won=0, todayCount=0;
+  const order={overdue:0,due:1,new:2,won:3,lost:4};
+  const sorted=[...data].sort((a,b)=>order[statusOf(a)]-order[statusOf(b)] || addDays(a.sent,a.days)-addDays(b.sent,b.days));
+  sorted.forEach(q=>{
+    const st=statusOf(q); const amt=+q.amt||0;
+    if(st==='won') won+=amt;
+    else if(st!=='lost'){ pipe+=amt; if(st==='overdue'||st==='due'){ risk+=amt; todayCount++; } }
+    const due=addDays(q.sent,q.days);
+    const badge={new:'<span class="badge b-new">In pipeline</span>',due:'<span class="badge b-due">Follow up today</span>',
+      overdue:'<span class="badge b-over">Overdue</span>',won:'<span class="badge b-won">Won</span>',lost:'<span class="badge b-lost">Lost</span>'}[st];
+    const tr=document.createElement('tr'); tr.className = st==='overdue'?'overdue':(st==='due'?'due':'');
+    tr.innerHTML=`<td>${esc(q.cust)}</td><td>${esc(q.job)}</td><td>${money(amt)}</td>
+      <td>${fmtD(q.sent)}</td><td>${fmtD(iso(due))}</td><td>${badge}</td>
+      <td><div class="acts">
+        ${st==='won'||st==='lost'?'':'<button class="mini" data-act="won" data-id="'+q.id+'">Won</button><button class="mini" data-act="lost" data-id="'+q.id+'">Lost</button><button class="mini" data-act="snooze" data-id="'+q.id+'">+3d</button>'}
+        <button class="mini" data-act="del" data-id="${q.id}">✕</button>
+      </div></td>`;
+    tb.appendChild(tr);
+  });
+  $('tPipe').textContent=money(pipe); $('tRisk').textContent=money(risk);
+  $('tWon').textContent=money(won); $('tToday').textContent=todayCount;
+  $('empty').style.display=data.length?'none':'block';
+  $('nudge').innerHTML = risk>0
+    ? `⚠️ You have <b>${money(risk)}</b> in quotes waiting on a follow-up right now. That's the revenue most contractors never chase — this is your to-do list.`
+    : (data.length? '✅ Nothing overdue. Every open quote is on schedule.' : '👋 Log your quotes and this shows exactly who to follow up with — and how much money is at stake.');
+  tb.querySelectorAll('button').forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.id));
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function act(a,id){
+  const q=data.find(x=>x.id==id); if(!q) return;
+  if(a==='won')q.status='won'; else if(a==='lost')q.status='lost';
+  else if(a==='snooze'){ q.days=(+q.days||0)+3; }
+  else if(a==='del'){ data=data.filter(x=>x.id!=id); }
+  save(); render();
+}
+
+$('fAdd').onclick=()=>{
+  const cust=$('fCust').value.trim(), job=$('fJob').value.trim(), amt=parseFloat($('fAmt').value), sent=$('fDate').value||iso(today()), days=parseInt($('fDays').value)||0;
+  if(!cust||isNaN(amt)){ alert('Enter at least a customer name and quote amount.'); return; }
+  data.push({id:Date.now()+''+Math.floor(Math.random()*1000), cust, job, amt, sent, days, status:'open'});
+  save(); render();
+  $('fCust').value='';$('fJob').value='';$('fAmt').value='';
+};
+$('clear').onclick=()=>{ if(confirm('Clear all quotes from this device?')){ data=[]; save(); render(); } };
+$('seed').onclick=()=>{
+  const t=today();
+  const mk=(cust,job,amt,daysAgo,followDays,status)=>({id:Date.now()+''+Math.floor(Math.random()*10000),cust,job,amt,sent:iso(addDays(iso(t),-daysAgo)),days:followDays,status:status||'open'});
+  data=[
+    mk('Dana Whitmore','AC tune-up + smart thermostat',454,5,3),
+    mk('Miguel Santos','Water heater replacement',1850,2,3),
+    mk('The Parkers','Panel upgrade 200A',2400,8,3),
+    mk('Rita Chen','Roof repair + gutters',1120,0,3),
+    mk('J. Alvarez','Duct cleaning',450,12,3,'won'),
+  ];
+  save(); render();
+};
+
+$('fDate').value=iso(today());
+load(); render();
+</script>
+</body>
+</html>
