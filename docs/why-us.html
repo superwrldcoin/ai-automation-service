@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Own your automation — don't rent it</title>
+<style>
+  :root { --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --bg:#f7f9fc; --ok:#1a8f4c; --no:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         color:var(--ink); background:var(--bg); line-height:1.55; }
+  .wrap { max-width:900px; margin:0 auto; padding:0 20px; }
+  header { background:linear-gradient(135deg,#12212e,#1a3d5c); color:#fff; padding:56px 0 44px; }
+  header h1 { margin:0 0 12px; font-size:30px; line-height:1.2; }
+  header p { margin:0; opacity:.9; max-width:640px; font-size:18px; }
+  section { padding:44px 0; border-bottom:1px solid #e6ebf1; }
+  h2 { font-size:23px; margin:0 0 18px; }
+  .lead { color:#41586b; font-size:16px; max-width:680px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #e6ebf1;
+          border-radius:12px; overflow:hidden; font-size:15px; }
+  th, td { text-align:left; padding:14px 16px; border-bottom:1px solid #eef2f7; vertical-align:top; }
+  thead th { background:#12212e; color:#fff; font-size:14px; }
+  thead th.us { background:#1a6feb; }
+  tbody tr:last-child td { border-bottom:0; }
+  td.dim { color:#7c8b99; }
+  .yes { color:var(--ok); font-weight:700; }
+  .no  { color:var(--no); font-weight:700; }
+  .feat { font-weight:600; width:26%; }
+  .roi { background:#fff; border:1px solid #e6ebf1; border-radius:12px; padding:24px; }
+  .roi .big { font-size:30px; font-weight:800; color:var(--accent); }
+  .roi input { font:inherit; width:110px; padding:8px 10px; border:1px solid #d4dde6; border-radius:8px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media(max-width:720px){ .grid3{grid-template-columns:1fr;} }
+  .pill { background:#fff; border:1px solid #e6ebf1; border-radius:12px; padding:18px; }
+  .pill h3 { margin:0 0 6px; font-size:16px; color:var(--accent); }
+  .pill p { margin:0; font-size:14px; color:#41586b; }
+  .guarantee { background:#f5f0e6; border-left:5px solid var(--gold); border-radius:8px; padding:20px 22px; }
+  .guarantee h2 { margin-top:0; }
+  .btn { display:inline-block; background:var(--accent); color:#fff; text-decoration:none;
+         padding:14px 26px; border-radius:8px; font-weight:600; }
+  .cta { text-align:center; }
+  nav a { color:#cfe0ff; text-decoration:none; font-size:14px; margin-right:16px; }
+  .note { font-size:12.5px; color:#8797a5; margin-top:10px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav><a href="index.html">&larr; Home</a><a href="demo.html">Live demo</a></nav>
+    <h1 style="margin-top:18px">Own your automation. Don't rent it.</h1>
+    <p>Most automation tools hand you a subscription and a homework assignment — you build
+       it, you maintain it, you become the expert. I do the opposite: I build it around
+       your exact workflow, you own it outright, and your data never leaves your business.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>The honest comparison</h2>
+    <p class="lead">Subscription document/automation tools (Docupilot, Formstack Documents,
+       PandaDoc and similar) are good products. But they're built for you to do the work.
+       Here's the difference that actually matters to a busy operator:</p>
+    <table>
+      <thead>
+        <tr>
+          <th class="feat">&nbsp;</th>
+          <th>Typical subscription tool</th>
+          <th class="us">Working with me</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feat">Who builds it</td>
+          <td class="dim">You do — 40–200 hrs of DIY setup is the industry estimate</td>
+          <td><span class="yes">I do</span> — built for you, tested, handed over working</td>
+        </tr>
+        <tr>
+          <td class="feat">Cost model</td>
+          <td class="dim">$29–$440+/month, forever</td>
+          <td><span class="yes">One-time build</span> — you own it, no monthly bill</td>
+        </tr>
+        <tr>
+          <td class="feat">Usage limits</td>
+          <td class="dim">Per-document caps &amp; metered tiers</td>
+          <td><span class="yes">Unlimited</span> — run it as much as you want</td>
+        </tr>
+        <tr>
+          <td class="feat">Your data</td>
+          <td class="dim">Uploaded to their cloud servers</td>
+          <td><span class="yes">Stays on your machine</span> — nothing leaves your business</td>
+        </tr>
+        <tr>
+          <td class="feat">Learning curve</td>
+          <td class="dim">You become the platform expert</td>
+          <td><span class="yes">Zero</span> — you just click and use it</td>
+        </tr>
+        <tr>
+          <td class="feat">Customization</td>
+          <td class="dim">Conditional logic &amp; integrations often locked behind higher tiers</td>
+          <td><span class="yes">Built to your exact workflow</span> — no tier gating</td>
+        </tr>
+        <tr>
+          <td class="feat">Support</td>
+          <td class="dim">Help docs &amp; ticket queues</td>
+          <td><span class="yes">A person who knows your setup</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">Pricing and feature-gating reflect publicly listed plans as of 2026 and
+       commonly cited user reviews. Not affiliated with any tool named.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The math that makes it a no-brainer</h2>
+    <div class="roi">
+      <p>How many hours a week does the repetitive task eat, and what's an hour of that
+         time worth?</p>
+      <p>
+        Hours/week: <input id="hrs" type="number" value="10" min="0">
+        &nbsp;&times;&nbsp; $/hour: <input id="rate" type="number" value="30" min="0">
+      </p>
+      <p style="margin-bottom:4px">That task is costing you about</p>
+      <div class="big" id="out">$15,600 / year</div>
+      <p class="note" id="sub">A one-time build that erases most of that pays for itself in the first month.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Why clients move forward</h2>
+    <div class="grid3">
+      <div class="pill"><h3>Done for you</h3><p>You answer a few questions and look at a draft.
+        I build, test, and hand it over working. No platform to learn.</p></div>
+      <div class="pill"><h3>You own it</h3><p>One-time build, no subscription, no per-use fees,
+        and your data stays private on your own computer.</p></div>
+      <div class="pill"><h3>Built for your workflow</h3><p>Not a generic template — it's shaped
+        around the exact documents and steps your business already uses.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="guarantee">
+      <h2>My guarantee</h2>
+      <p>I'll build a working sample on <strong>your real data, free</strong>, before you pay
+         anything. And if the finished tool doesn't do what we scoped, you don't pay. The only
+         risk you take is spending ten minutes telling me about the task.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap cta">
+    <h2>Send me your most repetitive task.</h2>
+    <p class="lead" style="margin:0 auto 20px">I'll show you exactly what I'd take off your plate — free, on your own data.</p>
+    <a class="btn" href="mailto:REPLACE_WITH_YOUR_EMAIL?subject=Free%20automation%20sample">Get my free sample</a>
+    &nbsp;&nbsp;<a href="demo.html">or try the live demo &rarr;</a>
+  </div>
+</section>
+
+<script>
+  const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+  function calc(){
+    const h = parseFloat(document.getElementById('hrs').value)||0;
+    const r = parseFloat(document.getElementById('rate').value)||0;
+    const year = h*r*52;
+    document.getElementById('out').textContent = fmt(year) + ' / year';
+    document.getElementById('sub').textContent =
+      year>0 ? `That's about ${fmt(year/12)}/month in labor on one repetitive task. A one-time build that erases most of it pays for itself fast.`
+             : 'Enter your numbers to see the annual cost of doing it by hand.';
+  }
+  document.getElementById('hrs').oninput = calc;
+  document.getElementById('rate').oninput = calc;
+  calc();
+</script>
+</body>
+</html>
