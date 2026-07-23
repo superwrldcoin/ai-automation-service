@@ -20,8 +20,20 @@ They tap an icon. That's it.
 ## STEP 1 — Build their private copy (you + me)
 1. Get from the client: their **logo**, **business name**, **service list + prices**, **shop ZIP**,
    and **tax rate**. (Ask for these when they say yes — "send me these 5 things and I'll build it.")
-2. Hand them to me (Claude). I copy the tool, drop in their pricebook and branding, and set
-   the defaults so it opens ready-to-use for their trade.
+2. Generate their unique app in one command:
+   ```
+   python tools/new-client.py --slug their-name --business "Their Business" --trade hvac \
+     --theme "#d35400" --shop "Their City, ST" --tax 7 --deposit 50 \
+     --name "Your Name" --phone "(555) 555-5555" --email you@example.com
+   ```
+   This creates `docs/clients/their-name/` — a **self-contained copy** with its own
+   `config.json` (their branding, trade, prices, support contact) and its own storage,
+   so it is genuinely THEIRS and independent of every other client.
+
+**Why this matters (the model):** you maintain ONE master engine (`docs/crm.html`). Each
+client is a stamped copy + a tiny `config.json`. Editing a client's config changes only
+that client. Their customers/quotes live only on their device. When you improve the master,
+you choose who gets the update by re-stamping — nothing changes under a client without you.
 
 ## STEP 2 — Host it for free (you)
 Pick ONE. All are free and give you a clickable link:

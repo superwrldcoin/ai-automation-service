@@ -1,0 +1,14 @@
+{
+  "clientId": "summit-comfort-hvac",
+  "business": "Summit Comfort HVAC",
+  "trade": "hvac",
+  "themeColor": "#d35400",
+  "shopZip": "Ocala, FL",
+  "taxRate": 7.0,
+  "depositPct": 50.0,
+  "contact": {
+    "name": "Vivid Static Lab",
+    "phone": "(352) 555-0100",
+    "email": "hello@vividstaticlab.com"
+  }
+}
