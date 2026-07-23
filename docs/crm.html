@@ -107,6 +107,9 @@
       <div class="nm" id="wsName">Your Business<small id="wsTrade">Home services</small></div>
     </div>
     <div class="navwrap" id="navwrap"><!-- nav injected --></div>
+    <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#8a83a6">
+      Built by <strong style="color:#cfc9de">Vivid Static Lab</strong>
+    </div>
   </aside>
 
   <div id="main">
@@ -193,8 +196,9 @@ function tripFeeFor(miles){ return miles==null?0:Math.min(120,Math.max(0,Math.ro
 
 /* =================== navigation shell =================== */
 const NAV=[
+  {id:'tools',ic:'⧉',label:'All tools menu',href:'index.html'},
   {sec:'Workspace'},
-  {id:'home',ic:'🏠',label:'Home'},
+  {id:'home',ic:'🏠',label:'Home (dashboard)'},
   {id:'customers',ic:'👥',label:'Customers'},
   {id:'pipeline',ic:'📋',label:'Quotes & Jobs'},
   {id:'followups',ic:'🔔',label:'Follow-ups',badge:true},
@@ -210,6 +214,7 @@ function renderNav(){
   NAV.forEach(n=>{
     if(n.sec){ h+=`<div class="sec">${n.sec}</div>`; return; }
     const badge=(n.badge&&dueCount)?`<span class="badge">${dueCount}</span>`:'';
+    if(n.href){ h+=`<a class="nav" href="${n.href}"><span class="ic">${n.ic}</span>${n.label}</a>`; return; }
     h+=`<a class="nav ${cur===n.id?'on':''}" href="#${n.id}"><span class="ic">${n.ic}</span>${n.label}${badge}</a>`;
   });
   $('navwrap').innerHTML=h;
