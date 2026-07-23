@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Offer - {{ property_address }}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 680px;
+         margin: 48px auto; color: #1a1a1a; line-height: 1.6; padding: 0 24px; }
+  .header { border-bottom: 3px solid #1a3d5c; padding-bottom: 12px; margin-bottom: 28px; }
+  .header h1 { color: #1a3d5c; margin: 0; font-size: 22px; letter-spacing: .5px; }
+  .meta { color: #555; font-size: 13px; margin-top: 4px; }
+  .amount { font-size: 20px; font-weight: bold; color: #1a3d5c; }
+  .repairs { background: #f5f0e6; border-left: 4px solid #c8a24a; padding: 10px 16px; margin: 20px 0; }
+  .sign { margin-top: 48px; }
+  .sign .line { border-top: 1px solid #333; width: 260px; margin-top: 40px; padding-top: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Letter of Intent to Purchase</h1>
+    <div class="meta">Ref #{{ property_id }} &middot; Prepared {{ close_date | date }}</div>
+  </div>
+
+  <p>Dear {{ first_name | title }} {{ last_name | title }},</p>
+
+  <p>Thank you for the opportunity to discuss the property located at
+     <strong>{{ property_address }}, {{ city }}, {{ state }}</strong>.
+     After reviewing the details, I am pleased to submit the following offer.</p>
+
+  <p>Proposed purchase price:
+     <span class="amount">{{ offer_price | money }}</span>,
+     with an anticipated closing on or before {{ close_date | date }}.</p>
+
+  {[ if repairs ]}
+  <div class="repairs">
+    <strong>Noted condition items:</strong> {{ repairs }}.
+    This offer accounts for these items; no further repair credits are requested.
+  </div>
+  {[ endif ]}
+
+  <p>This letter reflects my good-faith intent and is non-binding until a formal
+     purchase agreement is executed by both parties. I look forward to working
+     with you toward a smooth closing.</p>
+
+  <div class="sign">
+    <p>Sincerely,</p>
+    <div class="line">Buyer signature &amp; date</div>
+  </div>
+</body>
+</html>
