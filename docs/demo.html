@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live demo — spreadsheet to finished documents</title>
+<style>
+  :root { --ink:#12212e; --accent:#1a6feb; --gold:#c8a24a; --bg:#f7f9fc; --ok:#1a8f4c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         color:var(--ink); background:var(--bg); line-height:1.55; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 20px; }
+  header { background:linear-gradient(135deg,#12212e,#1a3d5c); color:#fff; padding:40px 0 32px; }
+  header h1 { margin:0 0 8px; font-size:26px; }
+  header p { margin:0; opacity:.9; max-width:640px; }
+  .steps { display:flex; gap:10px; flex-wrap:wrap; margin:22px 0 8px; }
+  .step { background:#fff; border:1px solid #e6ebf1; border-radius:10px; padding:12px 16px; flex:1; min-width:200px; }
+  .step b { color:var(--accent); }
+  .panel { background:#fff; border:1px solid #e6ebf1; border-radius:12px; padding:20px; margin:18px 0; }
+  .panel h2 { margin:0 0 4px; font-size:17px; }
+  .panel .hint { color:#5a6b7b; font-size:13px; margin:0 0 12px; }
+  textarea { width:100%; font-family:ui-monospace,Consolas,monospace; font-size:12.5px;
+             border:1px solid #d4dde6; border-radius:8px; padding:10px; resize:vertical; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:760px){ .grid2 { grid-template-columns:1fr; } }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
+  button { font:inherit; font-weight:600; border:0; border-radius:8px; padding:12px 22px; cursor:pointer; }
+  .go { background:var(--accent); color:#fff; font-size:16px; }
+  .go:hover { background:#1560d0; }
+  .ghost { background:#eef2f7; color:var(--ink); }
+  .file-btn { display:inline-block; background:#eef2f7; border-radius:8px; padding:9px 14px; cursor:pointer; font-size:13px; }
+  input[type=file]{ display:none; }
+  .result-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .badge { background:#e8f3ec; color:var(--ok); font-weight:700; padding:4px 12px; border-radius:20px; font-size:13px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-top:14px; }
+  .doc { border:1px solid #e6ebf1; border-radius:10px; padding:14px; cursor:pointer; background:#fff; transition:.12s; }
+  .doc:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 18px rgba(26,111,235,.12); }
+  .doc .t { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .doc .s { color:#5a6b7b; font-size:12px; }
+  .hidden { display:none; }
+  /* modal */
+  .overlay { position:fixed; inset:0; background:rgba(18,33,46,.6); display:none; align-items:center; justify-content:center; padding:20px; z-index:10; }
+  .overlay.open { display:flex; }
+  .modal { background:#fff; border-radius:12px; width:100%; max-width:740px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal .bar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #e6ebf1; }
+  .modal iframe { border:0; width:100%; flex:1; min-height:60vh; background:#fff; }
+  .modal .bar button { padding:8px 14px; font-size:13px; }
+  .foot { text-align:center; color:#5a6b7b; font-size:13px; padding:28px 0 40px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Watch a spreadsheet become finished documents</h1>
+    <p>This is the exact kind of tool I build for clients. Load the sample and click one
+       button — no software to install, nothing leaves your device. Everything runs right
+       here in your browser.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="steps">
+    <div class="step"><b>1.</b> Your data lives in a spreadsheet (left).</div>
+    <div class="step"><b>2.</b> Your document is a template with blanks (right).</div>
+    <div class="step"><b>3.</b> Click <b>Generate</b> — every record becomes a finished, personalized document.</div>
+  </div>
+
+  <div class="panel">
+    <div class="grid2">
+      <div>
+        <h2>Your data</h2>
+        <p class="hint">A spreadsheet exported as CSV. Each row = one document. (Edit it — the demo updates.)</p>
+        <textarea id="data" rows="9"></textarea>
+        <label class="file-btn">Upload your own CSV
+          <input type="file" id="dataFile" accept=".csv,text/csv">
+        </label>
+      </div>
+      <div>
+        <h2>Your document template</h2>
+        <p class="hint">Your letter/contract with blanks like <code>{{ first_name }}</code>. Fill once, reuse forever.</p>
+        <textarea id="tpl" rows="9"></textarea>
+        <label class="file-btn">Upload your own template
+          <input type="file" id="tplFile" accept=".html,.htm,.txt,.md">
+        </label>
+      </div>
+    </div>
+    <div class="row">
+      <button class="go" id="run">⚡ Generate documents</button>
+      <button class="ghost" id="reset">Reset to sample</button>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="results">
+    <div class="result-head">
+      <h2 style="margin:0">Finished documents</h2>
+      <span class="badge" id="badge"></span>
+    </div>
+    <p class="hint" id="resHint">Click any document to preview it. Then "Print / Save as PDF" to finalize.</p>
+    <div class="cards" id="cards"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="bar">
+      <strong id="mTitle">Preview</strong>
+      <div>
+        <button class="ghost" id="mPrint">Print / Save as PDF</button>
+        <button class="ghost" id="mClose">Close</button>
+      </div>
+    </div>
+    <iframe id="mFrame" title="document preview"></iframe>
+  </div>
+</div>
+
+<div class="foot">
+  <div class="wrap">
+    Like what you see? <a href="index.html">See how I can help &rarr;</a> ·
+    <a href="https://github.com/superwrldcoin/ai-automation-service">View the code on GitHub</a>
+  </div>
+</div>
+
+<script>
+/* ---------- sample content (pre-loaded so the demo works with one click) ---------- */
+const SAMPLE_CSV = `property_id,first_name,last_name,property_address,city,state,offer_price,close_date,repairs
+1042,Maria,Gonzalez,407 W Lacey St,Avon Park,FL,182500,2026-08-15,Roof and HVAC
+1043,James,Whitfield,1021 Dustin Dr,Lady Lake,FL,214000,2026-08-22,
+1044,Aisha,Bello,9895 NE 30th Ct,Anthony,FL,158900,2026-09-01,Kitchen and flooring
+1045,Robert,Nguyen,1012 NE 1st Ave,Gainesville,FL,301250,2026-08-30,`;
+
+const SAMPLE_TPL = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+ body{font-family:Georgia,serif;max-width:620px;margin:40px auto;color:#1a1a1a;line-height:1.6;padding:0 20px}
+ .h{border-bottom:3px solid #1a3d5c;padding-bottom:10px;margin-bottom:24px}
+ .h h1{color:#1a3d5c;margin:0;font-size:20px} .meta{color:#666;font-size:12px}
+ .amt{font-size:19px;font-weight:bold;color:#1a3d5c}
+ .rep{background:#f5f0e6;border-left:4px solid #c8a24a;padding:10px 14px;margin:18px 0}
+ .sign{margin-top:44px} .line{border-top:1px solid #333;width:240px;margin-top:36px;padding-top:4px;font-size:12px}
+</style></head><body>
+ <div class="h"><h1>Letter of Intent to Purchase</h1>
+   <div class="meta">Ref #{{ property_id }} &middot; Prepared {{ close_date | date }}</div></div>
+ <p>Dear {{ first_name | title }} {{ last_name | title }},</p>
+ <p>Thank you for the opportunity to discuss the property at
+    <strong>{{ property_address }}, {{ city }}, {{ state }}</strong>.
+    I am pleased to submit the following offer.</p>
+ <p>Proposed purchase price: <span class="amt">{{ offer_price | money }}</span>,
+    closing on or before {{ close_date | date }}.</p>
+ {[ if repairs ]}<div class="rep"><strong>Noted condition items:</strong> {{ repairs }}.
+    This offer accounts for these items.</div>{[ endif ]}
+ <p>This letter reflects my good-faith intent and is non-binding until a formal
+    purchase agreement is executed by both parties.</p>
+ <div class="sign"><p>Sincerely,</p><div class="line">Buyer signature &amp; date</div></div>
+</body></html>`;
+
+/* ---------- template engine (mirrors the Python DocForge) ---------- */
+const FILTERS = {
+  money: v => { const n = parseFloat(String(v).replace(/[$,]/g,'')); return isNaN(n) ? v
+                : '$' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+  date: v => {
+    const s = String(v).trim();
+    const months=['January','February','March','April','May','June','July','August',
+                  'September','October','November','December'];
+    let m;
+    if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)))            // YYYY-MM-DD
+      return `${months[+m[2]-1]} ${+m[3]}, ${m[1]}`;
+    if ((m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)))  // MM/DD/YYYY
+      return `${months[+m[1]-1]} ${+m[2]}, ${m[3]}`;
+    return s;
+  },
+  upper: v => String(v).toUpperCase(),
+  lower: v => String(v).toLowerCase(),
+  title: v => String(v).replace(/\w\S*/g, w => w[0].toUpperCase()+w.slice(1).toLowerCase()),
+};
+
+function render(tpl, row){
+  // conditional blocks first
+  let out = tpl.replace(/\{\[\s*if\s+(\w+)\s*\]\}([\s\S]*?)\{\[\s*endif\s*\]\}/g,
+    (_,f,block) => (String(row[f]||'').trim() ? block : ''));
+  // fields + filters
+  out = out.replace(/\{\{\s*(\w+)\s*(?:\|\s*(\w+)\s*)?\}\}/g, (whole,f,filt) => {
+    if (!(f in row)) return whole;
+    let val = row[f];
+    if (filt && FILTERS[filt]) val = FILTERS[filt](val);
+    return val;
+  });
+  return out;
+}
+
+/* ---------- tiny CSV parser (handles quoted fields) ---------- */
+function parseCSV(text){
+  const rows=[]; let field='', row=[], inQ=false;
+  text = text.replace(/\r\n?/g,'\n');
+  for (let i=0;i<text.length;i++){
+    const c=text[i];
+    if (inQ){
+      if (c==='"'){ if (text[i+1]==='"'){field+='"';i++;} else inQ=false; }
+      else field+=c;
+    } else {
+      if (c==='"') inQ=true;
+      else if (c===',') { row.push(field); field=''; }
+      else if (c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+  }
+  if (field.length||row.length){ row.push(field); rows.push(row); }
+  const header = rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.some(c=>c.trim()!=='')).map(r=>{
+    const o={}; header.forEach((h,i)=>o[h]=(r[i]??'').trim()); return o;
+  });
+}
+
+/* ---------- UI wiring ---------- */
+const $=id=>document.getElementById(id);
+let docs=[];
+
+function loadSample(){ $('data').value=SAMPLE_CSV; $('tpl').value=SAMPLE_TPL; $('results').classList.add('hidden'); }
+
+function generate(){
+  let rows;
+  try { rows = parseCSV($('data').value); }
+  catch(e){ alert('Could not read the spreadsheet. Check the format.'); return; }
+  if (!rows.length){ alert('No data rows found. Add at least one row under the header.'); return; }
+  const tpl = $('tpl').value;
+  docs = rows.map((r,i)=>{
+    const who = [r.first_name,r.last_name].filter(Boolean).join(' ') || r[Object.keys(r)[0]] || `Record ${i+1}`;
+    const sub = r.property_address || r.city || Object.values(r)[1] || '';
+    return { title: who, sub, html: render(tpl,r) };
+  });
+  const cards = $('cards'); cards.innerHTML='';
+  docs.forEach((d,i)=>{
+    const el=document.createElement('div'); el.className='doc';
+    el.innerHTML=`<div class="t">${escapeHtml(d.title)}</div><div class="s">${escapeHtml(d.sub)}</div>`;
+    el.onclick=()=>preview(i); cards.appendChild(el);
+  });
+  $('badge').textContent = `${docs.length} document${docs.length>1?'s':''} generated`;
+  $('results').classList.remove('hidden');
+  $('results').scrollIntoView({behavior:'smooth'});
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+let current=0;
+function preview(i){
+  current=i;
+  $('mTitle').textContent = docs[i].title;
+  $('mFrame').srcdoc = docs[i].html;
+  $('overlay').classList.add('open');
+}
+function closeModal(){ $('overlay').classList.remove('open'); }
+
+$('run').onclick=generate;
+$('reset').onclick=loadSample;
+$('mClose').onclick=closeModal;
+$('overlay').onclick=e=>{ if(e.target===$('overlay')) closeModal(); };
+$('mPrint').onclick=()=>{ const f=$('mFrame'); f.contentWindow.focus(); f.contentWindow.print(); };
+$('dataFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=()=>$('data').value=r.result; r.readAsText(f); };
+$('tplFile').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader();
+  r.onload=()=>$('tpl').value=r.result; r.readAsText(f); };
+
+loadSample();
+</script>
+</body>
+</html>
