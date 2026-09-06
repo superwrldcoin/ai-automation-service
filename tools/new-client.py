@@ -7,23 +7,36 @@ the app engine plus a config.json that holds their branding, trade, and prices.
 Editing one client's config.json changes only THAT client's app. Improving the
 master engine and re-running this updates only the clients you choose to re-stamp.
 
-Usage:
+Create a client:
     python tools/new-client.py --slug summit-comfort-hvac --business "Summit Comfort HVAC" \
         --trade hvac --theme "#d35400" --shop "Ocala, FL" --tax 7 --deposit 50 \
+        --biz-phone "(352) 555-0199" --biz-email office@summitcomfort.com \
         --name "You @ Vivid Static Lab" --phone "(352) 555-0100" --email you@example.com
+
+Push an engine improvement out to clients (their config.json is left alone):
+    python tools/new-client.py --update-engine --slug summit-comfort-hvac
+    python tools/new-client.py --update-engine --all
 
 Then host docs/clients/<slug>/ (Netlify Drop is easiest = its own URL = fully isolated),
 or it's already live at <your-pages>/clients/<slug>/ .
+
+Whose contact is whose: --biz-phone / --biz-email are the CLIENT's own details and
+print on their estimates and invoices. --name / --phone / --email are OUR support
+contact, shown on the app's Help screen and handoff page.
 """
-import argparse, json, shutil
+import argparse, json, shutil, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
+CLIENTS = DOCS / "clients"
+ICONS = ("icon-192.png", "icon-512.png", "apple-touch-icon.png", "favicon-64.png")
 
+# Bump this cache name whenever the engine changes, or already-installed apps
+# keep serving the old crm.html from their offline cache.
 CLIENT_SW = """/* Offline cache for this client's app only. */
-const CACHE='client-cache-v1';
-const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json',
+const CACHE='client-cache-v2';
+const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json','./client-handoff.html',
   './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all(ASSETS.map(u=>c.add(u).catch(()=>null)))).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
@@ -118,69 +131,116 @@ This folder contains the branded Business Hub for {business}. It is a private, l
 '''
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--slug", required=True, help="folder name, e.g. summit-comfort-hvac")
-    ap.add_argument("--business", required=True)
-    ap.add_argument("--trade", default="hvac", choices=["hvac", "plumbing", "electrical", "roofing"])
-    ap.add_argument("--theme", default="#1a6feb", help="accent color hex")
-    ap.add_argument("--shop", default="", help="shop ZIP or city (trip-fee origin)")
-    ap.add_argument("--tax", type=float, default=7)
-    ap.add_argument("--deposit", type=float, default=50)
-    ap.add_argument("--name", default="Vivid Static Lab", help="support contact name")
-    ap.add_argument("--phone", default="")
-    ap.add_argument("--email", default="hello@vividstatic.com")
-    ap.add_argument("--client-url", default="", help="public URL for the client's app, defaults to the GitHub Pages pattern")
-    ap.add_argument("--pricebook", default="", help="optional path to a JSON pricebook override")
-    args = ap.parse_args()
+def default_url(slug):
+    return f"https://superwrldcoin.github.io/ai-automation-service/clients/{slug}/"
 
-    dest = DOCS / "clients" / args.slug
+
+def stamp_files(dest, slug, business, theme, trade, support_email, client_url):
+    """Write everything DERIVED from a client's config: engine, icons, manifest,
+    service worker, redirect and handoff package.
+
+    It deliberately never writes config.json, so it is safe to re-run against a
+    live client to push an engine improvement without touching their settings."""
     (dest / "icons").mkdir(parents=True, exist_ok=True)
 
-    # 1. copy the engine
     shutil.copy(DOCS / "crm.html", dest / "crm.html")
-    for ic in ("icon-192.png", "icon-512.png", "apple-touch-icon.png", "favicon-64.png"):
+    for ic in ICONS:
         src = DOCS / "icons" / ic
         if src.exists():
             shutil.copy(src, dest / "icons" / ic)
 
-    # 2. client manifest
     (dest / "manifest-crm.json").write_text(json.dumps({
-        "name": f"{args.business} — Hub", "short_name": "Hub",
+        "name": f"{business} — Hub", "short_name": "Hub",
         "start_url": "./crm.html", "scope": "./", "display": "standalone",
-        "orientation": "portrait", "background_color": "#12212e", "theme_color": args.theme,
+        "orientation": "portrait", "background_color": "#12212e", "theme_color": theme,
         "icons": [
             {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
             {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
         ],
     }, indent=2), encoding="utf-8")
 
-    # 3. client service worker + redirect
     (dest / "sw.js").write_text(CLIENT_SW, encoding="utf-8")
     (dest / "index.html").write_text(REDIRECT, encoding="utf-8")
-
-    # 4. client handoff files
-    client_url = args.client_url or f"https://superwrldcoin.github.io/ai-automation-service/clients/{args.slug}/"
-    handoff_html = HANDOFF_HTML.format(
-        business=args.business,
-        theme=args.theme,
-        client_url=client_url,
-        support_email=args.email,
-    )
-    (dest / "client-handoff.html").write_text(handoff_html, encoding="utf-8")
+    (dest / "client-handoff.html").write_text(HANDOFF_HTML.format(
+        business=business, theme=theme, client_url=client_url, support_email=support_email,
+    ), encoding="utf-8")
     (dest / "README.md").write_text(HANDOFF_README.format(
-        business=args.business,
-        trade=args.trade,
-        client_url=client_url,
-        support_email=args.email,
-        slug=args.slug,
+        business=business, trade=trade, client_url=client_url,
+        support_email=support_email, slug=slug,
     ), encoding="utf-8")
 
-    # 5. the config that makes this client unique
+
+def update_engine(slugs):
+    """Re-stamp existing clients with the current master engine, keeping their config.json."""
+    if not slugs:
+        sys.exit("No client folders under docs/clients/ — create one first.")
+    for slug in slugs:
+        dest = CLIENTS / slug
+        cfgfile = dest / "config.json"
+        if not cfgfile.exists():
+            print(f"  skipped {slug} — no config.json, so it isn't a client folder")
+            continue
+        cfg = json.loads(cfgfile.read_text(encoding="utf-8"))
+        handoff = cfg.get("handoff") or {}
+        contact = cfg.get("contact") or {}
+        stamp_files(
+            dest, slug,
+            cfg.get("business", "Business"),
+            cfg.get("themeColor", "#1a6feb"),
+            cfg.get("trade", "hvac"),
+            handoff.get("supportEmail") or contact.get("email") or "hello@vividstatic.com",
+            handoff.get("url") or default_url(slug),
+        )
+        print(f"  updated {slug} — engine + handoff refreshed, config.json untouched")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--slug", help="folder name, e.g. summit-comfort-hvac")
+    ap.add_argument("--business")
+    ap.add_argument("--trade", default="hvac", choices=["hvac", "plumbing", "electrical", "roofing"])
+    ap.add_argument("--theme", default="#1a6feb", help="accent color hex")
+    ap.add_argument("--shop", default="", help="shop ZIP or city (trip-fee origin)")
+    ap.add_argument("--tax", type=float, default=7)
+    ap.add_argument("--deposit", type=float, default=50)
+    ap.add_argument("--biz-phone", default="", help="the CLIENT's own phone — prints on their quotes")
+    ap.add_argument("--biz-email", default="", help="the CLIENT's own email — prints on their quotes")
+    ap.add_argument("--name", default="Vivid Static Lab", help="support contact name (ours)")
+    ap.add_argument("--phone", default="", help="support phone (ours)")
+    ap.add_argument("--email", default="hello@vividstatic.com", help="support email (ours)")
+    ap.add_argument("--client-url", default="", help="public URL for the client's app, defaults to the GitHub Pages pattern")
+    ap.add_argument("--pricebook", default="", help="optional path to a JSON pricebook override")
+    ap.add_argument("--update-engine", action="store_true",
+                    help="re-stamp existing client(s) with the current engine, keeping their config.json")
+    ap.add_argument("--all", action="store_true", help="with --update-engine: every client folder")
+    args = ap.parse_args()
+
+    if args.update_engine:
+        if args.all:
+            slugs = sorted(p.name for p in CLIENTS.iterdir() if p.is_dir()) if CLIENTS.exists() else []
+        elif args.slug:
+            slugs = [args.slug]
+        else:
+            sys.exit("--update-engine needs either --slug <name> or --all")
+        print("Pushing the current engine to client app(s):")
+        update_engine(slugs)
+        print("Re-upload any folder hosted outside GitHub Pages (e.g. a Netlify drop).")
+        return
+
+    if not args.slug or not args.business:
+        sys.exit("Creating a client needs --slug and --business "
+                 "(or use --update-engine to refresh existing ones).")
+
+    dest = CLIENTS / args.slug
+    client_url = args.client_url or default_url(args.slug)
+    stamp_files(dest, args.slug, args.business, args.theme, args.trade, args.email, client_url)
+
+    # the config that makes this client unique
     cfg = {
         "clientId": args.slug, "business": args.business, "trade": args.trade,
         "themeColor": args.theme, "shopZip": args.shop, "taxRate": args.tax,
         "depositPct": args.deposit,
+        "businessPhone": args.biz_phone, "businessEmail": args.biz_email,
         "contact": {"name": args.name, "phone": args.phone, "email": args.email},
         "handoff": {"url": client_url, "supportEmail": args.email}
     }
