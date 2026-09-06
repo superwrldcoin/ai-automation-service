@@ -112,13 +112,17 @@ The New quote screen opens with a panel that reads a pasted message or an upload
   and fully offline. A scanned (image-only) PDF is reported honestly rather than failing.
 - **Be honest in the pitch:** this is deterministic keyword matching, not AI. It handles the
   common trade phrasings well; it is not "reads any document". That's item 9.4.
-- The logic is covered by a test harness that ports the matcher and its regexes to Python:
-  see the *Testing* note in §12.
+- The logic is covered by tests — see §12.
 
 ## 12. Testing
-There's no test runner in the repo (it's a static site). The auto-fill matcher was developed
-against a Python port of its own logic — same synonym table, same regexes — run over ~11
-realistic job descriptions, which is how the price-read-as-quantity and lost-ZIP bugs were
-found. Worth recreating if that logic changes: port `SYN` / `UNITRE` / `ADDR_RE` / `qtyFor`
-out of `docs/crm.html`, assert against sample text, and diff the pattern sources back against
-the HTML so the two can't drift.
+    python tools/check-autofill.py
+
+There's no test runner in the repo (static site, no Node), so that script mirrors the
+auto-fill matcher in Python and runs it over 11 realistic job descriptions — which is how
+the price-read-as-quantity and dropped-ZIP bugs were caught. **Run it after touching the
+auto-fill block in `docs/crm.html`.**
+
+A mirror can go stale, so the second half of the script reads the regexes, the synonym table
+and `NUMWORD` / `STOPW` back out of `docs/crm.html` and fails if they aren't character-for-
+character what it tested. It also fails if a stock pricebook service has no synonyms, since
+that would make it silently unmatchable. Exit code 0 = green.
