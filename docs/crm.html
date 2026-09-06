@@ -24,7 +24,11 @@
   #sidebar{ width:250px; flex:0 0 250px; background:var(--side); color:var(--sideink);
             display:flex; flex-direction:column; transition:transform .2s; z-index:40; }
   .ws{ padding:16px 16px 12px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:10px; }
-  .ws .logo{ width:32px; height:32px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; }
+  .ws .logo{ width:32px; height:32px; border-radius:8px; background:var(--accent); display:flex; align-items:center;
+             justify-content:center; font-weight:800; color:#fff; position:relative; overflow:hidden; flex:0 0 32px; }
+  /* a client logo, when one was supplied, sits over the initial */
+  .ws .logo img{ position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%;
+                 object-fit:cover; background:#fff; }
   .ws .nm{ font-weight:700; color:#fff; font-size:15px; line-height:1.15; }
   .ws .nm small{ display:block; font-weight:400; color:var(--sideink); font-size:11px; }
   .navwrap{ overflow-y:auto; padding:10px 8px 20px; flex:1; }
@@ -155,7 +159,7 @@ const BOOKS = {
 };
 let KEY='crm_v1';           /* becomes crm_<clientId> when a config.json is present */
 let CFG=null;              /* per-client config, loaded at boot */
-const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50,phone:'',email:''}, pricebook:{}, customers:[], quotes:[], activity:[] };
+const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50,phone:'',email:'',lastBackup:''}, pricebook:{}, customers:[], quotes:[], activity:[] };
 let S;
 function applyConfig(st){ if(!CFG)return st; const c=CFG, s=st.settings;
   if(c.business)s.business=c.business; if(c.trade&&BOOKS[c.trade])s.trade=c.trade;
@@ -234,7 +238,14 @@ function renderNav(){
   $('navwrap').innerHTML=h;
   $('wsName').firstChild.textContent=S.settings.business||'Your Business';
   $('wsTrade').textContent=(BOOKS[S.settings.trade]||{}).label+' services';
-  $('wsLogo').textContent=(S.settings.business||'B').trim().charAt(0).toUpperCase();
+  /* their logo if we were given one, otherwise the first letter of the business name.
+     A missing/typo'd file removes itself and the initial shows through. */
+  const initial=(S.settings.business||'B').trim().charAt(0).toUpperCase(), lg=$('wsLogo');
+  if(CFG&&CFG.logo){
+    const img=lg.querySelector('img');
+    if(img){ lg.querySelector('span').textContent=initial; }
+    else{ lg.innerHTML='<span>'+esc(initial)+'</span><img src="'+esc(CFG.logo)+'" alt="" onerror="this.remove()">'; }
+  } else { lg.textContent=initial; }
 }
 
 /* =================== views =================== */
@@ -252,8 +263,17 @@ VIEWS.home=function(){
   const dueList=S.quotes.filter(q=>['due','over'].includes(fuStatus(q)))
      .sort((a,b)=>addDays(a.sent,a.followDays||3)-addDays(b.sent,b.followDays||3));
   const upcoming=S.quotes.filter(q=>q.scheduledDate&&q.stage!=='lost').sort((a,b)=>parseD(a.scheduledDate)-parseD(b.scheduledDate)).slice(0,5);
+  /* everything lives on this one device, so nag (gently, and only once there's
+     something to lose) until they've saved a copy */
+  const lastBk=S.settings.lastBackup?new Date(S.settings.lastBackup):null;
+  const bkDays=lastBk?Math.floor((Date.now()-lastBk.getTime())/86400000):null;
+  const needBackup=S.quotes.length>=3&&(bkDays===null||bkDays>=30);
   $('view').innerHTML=`
     ${S.customers.length===0?`<div class="help">👋 Welcome! Start by adding a customer, or open <b>Settings</b> to put in your business name and prices. Nothing here is online — it all saves on this device.</div>`:''}
+    ${needBackup?`<div class="help" style="background:#fff8ec;border-color:#f0d9a8;color:#7a5f14">
+      💾 <b>Save a copy of your work.</b> Your customers and quotes live on this device only —
+      ${bkDays===null?'you haven\'t saved a backup yet':'your last backup was '+bkDays+' days ago'}.
+      It takes one tap. <button class="btn sm" style="margin-left:6px" onclick="location.hash='settings'">Back up now</button></div>`:''}
     <div class="tiles">
       <div class="tile pipe"><div class="n">${money(pipe)}</div><div class="l">Open pipeline</div></div>
       <div class="tile risk"><div class="n">${money(risk)}</div><div class="l">Needs follow-up now</div></div>
@@ -794,6 +814,8 @@ function showDoc(q,mode){
   /* the document wears the client's own colour, same as their app */
   const AC=(CFG&&CFG.themeColor)||'#1a6feb';
   const reach=[S.settings.phone,S.settings.email].filter(x=>x&&String(x).trim()).map(esc).join(' · ');
+  /* srcdoc resolves relative paths against this page, so a stamped 'logo.png' just works */
+  const logo=(CFG&&CFG.logo)?`<img src="${esc(CFG.logo)}" alt="" style="height:46px;max-width:190px;object-fit:contain;display:block;margin-bottom:7px">`:'';
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:30px auto;padding:0 22px;line-height:1.5}
     .top{display:flex;justify-content:space-between;border-bottom:4px solid ${AC};padding-bottom:12px;margin-bottom:18px}
@@ -805,7 +827,7 @@ function showDoc(q,mode){
     .g{border-top:2px solid ${AC};margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:${AC}}
     .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid ${AC};padding:9px 13px;font-size:13px}
   </style></head><body>
-    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured${reach?'<br>'+reach:''}</div></div>
+    <div class="top"><div>${logo}<div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured${reach?'<br>'+reach:''}</div></div>
       <div style="text-align:right"><h1>${mode==='invoice'?'INVOICE':'ESTIMATE'}</h1><div class="muted">${no}<br>${now.toLocaleDateString()}</div></div></div>
     <div class="grid"><div><div class="muted">BILL TO</div><b>${esc(c.name||'')}</b><br>${esc(c.phone||'')}</div>
       <div><div class="muted">SERVICE ADDRESS</div>${esc(q.addr||c.address||'')}</div></div>
@@ -836,7 +858,8 @@ VIEWS.settings=function(){
       <div id="bookRows"></div>
       <button class="btn" style="margin-top:12px" onclick="saveBook()">Save pricebook</button>
     </div>
-    <div class="card"><h2>Your data</h2><p class="muted">Everything is stored on this device only. Back it up or move it to a new phone here.</p>
+    <div class="card"><h2>Your data</h2><p class="muted">Everything is stored on this device only. Back it up or move it to a new phone here.
+      ${S.settings.lastBackup?`Last backup: <b>${new Date(S.settings.lastBackup).toLocaleDateString()}</b>.`:`<b>No backup saved yet.</b>`}</p>
       <div class="flex"><button class="btn sec sm" onclick="exportData()">⬇ Export backup</button>
         <label class="btn sec sm" style="cursor:pointer">⬆ Import backup<input type="file" id="impFile" accept=".json" style="display:none"></label>
         <button class="btn warn sec sm" onclick="resetData()">Reset everything</button></div>
@@ -857,7 +880,8 @@ function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'app
   const slug=(S.settings.business||'business').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'business';
   const url=URL.createObjectURL(blob); const a=document.createElement('a');
   a.href=url; a.download=slug+'-backup-'+iso(todayD())+'.json'; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),5000); }
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  S.settings.lastBackup=new Date().toISOString(); save(); }
 function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.settings)throw 0; S=d; if(!S.activity)S.activity=[]; save(); alert('Backup imported.'); renderNav(); location.hash='home'; router(); }catch(err){ alert('That file was not a valid backup.'); } }; r.readAsText(f); }
 function resetData(){ if(confirm('Erase all data on this device and start fresh?')){ localStorage.removeItem(KEY); S=loadState(); save(); renderNav(); location.hash='home'; router(); } }
 

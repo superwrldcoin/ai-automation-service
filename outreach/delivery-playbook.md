@@ -24,11 +24,28 @@ They tap an icon. That's it.
    ```
    python tools/new-client.py --slug their-name --business "Their Business" --trade hvac \
      --theme "#d35400" --shop "Their City, ST" --tax 7 --deposit 50 \
-     --name "Your Name" --phone "(555) 555-5555" --email you@example.com
+     --logo ~/clients/their-name/logo.png \
+     --biz-phone "(555) 555-1234" --biz-email office@theirbusiness.com \
+     --name "Your Name" --phone "(555) 555-5555" --email hello@vividstatic.com
    ```
    This creates `docs/clients/their-name/` — a **self-contained copy** with its own
    `config.json` (their branding, trade, prices, support contact) and its own storage,
    so it is genuinely THEIRS and independent of every other client.
+
+   Which contact is which: `--biz-phone` / `--biz-email` are **theirs** and print on
+   their estimates and invoices, so their customer can reply. `--name` / `--phone` /
+   `--email` are **yours** — the support contact on their Help screen.
+
+   The folder also comes with `how-to.html` (their guide, with their link and your
+   support address already filled in) and `client-handoff.html`. Nothing to edit by hand.
+
+3. Later, when the master engine improves, push it to them without touching their settings:
+   ```
+   python tools/new-client.py --update-engine --slug their-name     # one client
+   python tools/new-client.py --update-engine --all                 # everyone
+   ```
+   Their `config.json` — prices, branding, contact — is left exactly as it is.
+   This is what makes a monthly "keep it running + improvements" retainer cheap to honour.
 
 **Why this matters (the model):** you maintain ONE master engine (`docs/crm.html`). Each
 client is a stamped copy + a tiny `config.json`. Editing a client's config changes only
@@ -76,8 +93,11 @@ This is the single most important step. **Do it for them the first time.**
 Now they open it like any app. **They will never see a web address again.**
 
 ## STEP 4 — Give them the cheat sheet + video
-1. **Cheat sheet:** open `how-to.html`, fill in the 3 blanks (their link, your name/phone),
-   print it, and hand them a physical copy. Also save it as a PDF and text it to them.
+1. **Cheat sheet:** open `docs/clients/their-name/how-to.html` — their link and your support
+   email are already filled in. Print it, hand them a physical copy, then use the page's own
+   **🖨️ Print** button to save a PDF and text them that too.
+   (The generic `docs/how-to.html` still has a `[YOUR TOOL LINK GOES HERE]` placeholder —
+   that's the master template, not the one you hand over.)
 2. **Video:** record a 2–3 minute screen recording (free tools: Loom, or the built-in
    phone screen recorder) doing one real quote start to finish. Text them the link.
    People re-watch this instead of calling you.
@@ -118,6 +138,9 @@ Use these exact kinds of words. No tech talk.
 - [ ] Private copy built and branded
 - [ ] Hosted; link works on phone
 - [ ] Icon added to THEIR phone (you did it with them)
-- [ ] Cheat sheet filled in, printed, and PDF texted
+- [ ] Cheat sheet printed and PDF texted
+- [ ] **Watched them do one Export backup** and email it to themselves (do not skip — their
+      data lives on that one device, and this is the conversation you want to have *before*
+      a lost phone, not after)
 - [ ] 3-minute walkthrough video sent
 - [ ] Day-2 text + Day-7 check-in scheduled

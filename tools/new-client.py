@@ -10,8 +10,13 @@ master engine and re-running this updates only the clients you choose to re-stam
 Create a client:
     python tools/new-client.py --slug summit-comfort-hvac --business "Summit Comfort HVAC" \
         --trade hvac --theme "#d35400" --shop "Ocala, FL" --tax 7 --deposit 50 \
+        --logo ~/clients/summit/logo.png \
         --biz-phone "(352) 555-0199" --biz-email office@summitcomfort.com \
         --name "You @ Vivid Static Lab" --phone "(352) 555-0100" --email you@example.com
+
+Each client folder ends up self-contained: their app, their config, their logo, their
+service worker, their handoff page, and `how-to.html` with their own link and support
+address already filled in — nothing left to edit by hand before you hand it over.
 
 Push an engine improvement out to clients (their config.json is left alone):
     python tools/new-client.py --update-engine --slug summit-comfort-hvac
@@ -36,8 +41,8 @@ ICONS = ("icon-192.png", "icon-512.png", "apple-touch-icon.png", "favicon-64.png
 # keep serving the old crm.html from their offline cache.
 CLIENT_SW = """/* Offline cache for this client's app only. */
 const CACHE='client-cache-v2';
-const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json','./client-handoff.html',
-  './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
+const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json','./client-handoff.html','./how-to.html',
+  './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'__EXTRA_ASSETS__];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all(ASSETS.map(u=>c.add(u).catch(()=>null)))).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const r=e.request; if(r.method!=='GET'||new URL(r.url).origin!==self.location.origin)return;
@@ -135,9 +140,21 @@ def default_url(slug):
     return f"https://superwrldcoin.github.io/ai-automation-service/clients/{slug}/"
 
 
-def stamp_files(dest, slug, business, theme, trade, support_email, client_url):
+def client_guide(client_url, support_email):
+    """The plain-English guide with this client's own link and support address filled in,
+    so there is nothing left to edit by hand at handover time."""
+    guide = (DOCS / "how-to.html").read_text(encoding="utf-8")
+    guide = guide.replace("[YOUR TOOL LINK GOES HERE]", client_url)
+    guide = guide.replace("hello@vividstatic.com", support_email)
+    # inside a client's own folder, "All tools" just bounces back to their app
+    return guide.replace(
+        '<a href="crm.html">← Open your Business Hub</a> &middot; <a href="index.html">All tools</a>',
+        '<a href="crm.html">← Open your Business Hub</a>')
+
+
+def stamp_files(dest, slug, business, theme, trade, support_email, client_url, logo=None):
     """Write everything DERIVED from a client's config: engine, icons, manifest,
-    service worker, redirect and handoff package.
+    service worker, redirect, handoff package and their filled-in guide.
 
     It deliberately never writes config.json, so it is safe to re-run against a
     live client to push an engine improvement without touching their settings."""
@@ -159,8 +176,11 @@ def stamp_files(dest, slug, business, theme, trade, support_email, client_url):
         ],
     }, indent=2), encoding="utf-8")
 
-    (dest / "sw.js").write_text(CLIENT_SW, encoding="utf-8")
+    # keep the logo available offline too — it prints on every estimate
+    extra = ",'./%s'" % logo if logo else ""
+    (dest / "sw.js").write_text(CLIENT_SW.replace("__EXTRA_ASSETS__", extra), encoding="utf-8")
     (dest / "index.html").write_text(REDIRECT, encoding="utf-8")
+    (dest / "how-to.html").write_text(client_guide(client_url, support_email), encoding="utf-8")
     (dest / "client-handoff.html").write_text(HANDOFF_HTML.format(
         business=business, theme=theme, client_url=client_url, support_email=support_email,
     ), encoding="utf-8")
@@ -190,8 +210,9 @@ def update_engine(slugs):
             cfg.get("trade", "hvac"),
             handoff.get("supportEmail") or contact.get("email") or "hello@vividstatic.com",
             handoff.get("url") or default_url(slug),
+            cfg.get("logo") or None,
         )
-        print(f"  updated {slug} — engine + handoff refreshed, config.json untouched")
+        print(f"  updated {slug} — engine, guide + handoff refreshed, config.json untouched")
 
 
 def main():
@@ -205,6 +226,7 @@ def main():
     ap.add_argument("--deposit", type=float, default=50)
     ap.add_argument("--biz-phone", default="", help="the CLIENT's own phone — prints on their quotes")
     ap.add_argument("--biz-email", default="", help="the CLIENT's own email — prints on their quotes")
+    ap.add_argument("--logo", default="", help="path to the client's logo image — shows in their app and on their quotes")
     ap.add_argument("--name", default="Vivid Static Lab", help="support contact name (ours)")
     ap.add_argument("--phone", default="", help="support phone (ours)")
     ap.add_argument("--email", default="hello@vividstatic.com", help="support email (ours)")
@@ -233,7 +255,18 @@ def main():
 
     dest = CLIENTS / args.slug
     client_url = args.client_url or default_url(args.slug)
-    stamp_files(dest, args.slug, args.business, args.theme, args.trade, args.email, client_url)
+
+    # the client's logo lands beside their app as logo.<ext>, so it works offline
+    logo_name = None
+    if args.logo:
+        src = Path(args.logo)
+        if not src.exists():
+            sys.exit(f"--logo: no such file: {src}")
+        logo_name = "logo" + src.suffix.lower()
+        dest.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src, dest / logo_name)
+
+    stamp_files(dest, args.slug, args.business, args.theme, args.trade, args.email, client_url, logo_name)
 
     # the config that makes this client unique
     cfg = {
@@ -244,14 +277,19 @@ def main():
         "contact": {"name": args.name, "phone": args.phone, "email": args.email},
         "handoff": {"url": client_url, "supportEmail": args.email}
     }
+    if logo_name:
+        cfg["logo"] = logo_name
     if args.pricebook:
         cfg["pricebook"] = json.loads(Path(args.pricebook).read_text(encoding="utf-8"))
     (dest / "config.json").write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
     print(f"Created client app: {dest}")
-    print(f"  Local files : {[p.name for p in dest.iterdir()]}")
+    print(f"  Local files : {sorted(p.name for p in dest.iterdir())}")
     print(f"  Live link   : {client_url}")
     print(f"  Handoff page: {dest / 'client-handoff.html'}")
+    print(f"  Their guide : {dest / 'how-to.html'}  (link + support email already filled in)")
+    if not logo_name:
+        print("  No logo     : pass --logo path/to/their-logo.png to brand the app and their quotes")
 
 
 if __name__ == "__main__":
