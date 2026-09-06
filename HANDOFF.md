@@ -70,12 +70,15 @@ validated, PWA/offline working). Grade: A–. **Not yet distributed to real clie
 ## 9. Open items / next steps
 1. **Distribution (the real bottleneck):** find + contact the first ~20 HVAC/plumbing shops,
    offer the free sample. This is the operator's job — see `outreach/`.
-2. Optionally merge the **smart file analyzer** (paste text / upload CSV·PDF → auto-quote)
+2. **Production handoff package:** each client should receive a generated `client-handoff.html`
+   + `README.md` from `tools/new-client.py`, along with a clean access page and support email,
+   so the app is ready to share without custom setup steps.
+3. Optionally merge the **smart file analyzer** (paste text / upload CSV·PDF → auto-quote)
    from `demo.html` into the CRM's new-quote builder.
-3. Paid upgrades to build when a client says yes: **AI document reading** (Claude API — needs
+4. Paid upgrades to build when a client says yes: **AI document reading** (Claude API — needs
    a small backend + key = first thing worth spending money on), **property-data enrichment**
    (ATTOM/Estated), **custom domain** setup.
-4. Optional: pre-loaded sample workspace for demos; a "What's included" one-pager PDF.
+5. Optional: pre-loaded sample workspace for demos; a "What's included" one-pager PDF.
 
 ## 10. Notes for a planning chat
 - Don't rebuild what exists — read the repo first.

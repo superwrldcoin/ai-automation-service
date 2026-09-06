@@ -155,11 +155,12 @@ const BOOKS = {
 };
 let KEY='crm_v1';           /* becomes crm_<clientId> when a config.json is present */
 let CFG=null;              /* per-client config, loaded at boot */
-const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50}, pricebook:{}, customers:[], quotes:[], activity:[] };
+const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50,phone:'',email:''}, pricebook:{}, customers:[], quotes:[], activity:[] };
 let S;
 function applyConfig(st){ if(!CFG)return st; const c=CFG, s=st.settings;
   if(c.business)s.business=c.business; if(c.trade&&BOOKS[c.trade])s.trade=c.trade;
   if(c.shopZip)s.shopZip=c.shopZip; if(c.taxRate!=null)s.taxRate=c.taxRate; if(c.depositPct!=null)s.depositPct=c.depositPct;
+  if(c.businessPhone)s.phone=c.businessPhone; if(c.businessEmail)s.email=c.businessEmail;
   if(c.pricebook){ for(const k in c.pricebook) st.pricebook[k]=c.pricebook[k]; } return st; }
 function loadState(){ try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.settings){ if(!s.pricebook||!Object.keys(s.pricebook).length) seedBook(s); if(!s.activity)s.activity=[]; return s; } }catch(e){} const init=JSON.parse(JSON.stringify(DEFAULTS)); seedBook(init); applyConfig(init); return init; }
 function seedBook(st){ st.pricebook={}; for(const k in BOOKS){ st.pricebook[k]=BOOKS[k].items.map(it=>({name:it[0],price:it[1]})); } }
@@ -251,13 +252,12 @@ VIEWS.home=function(){
   const dueList=S.quotes.filter(q=>['due','over'].includes(fuStatus(q)))
      .sort((a,b)=>addDays(a.sent,a.followDays||3)-addDays(b.sent,b.followDays||3));
   const upcoming=S.quotes.filter(q=>q.scheduledDate&&q.stage!=='lost').sort((a,b)=>parseD(a.scheduledDate)-parseD(b.scheduledDate)).slice(0,5);
-  const wonMonth=S.quotes.filter(q=>q.stage==='won').reduce((s,q)=>s+qTotals(q).total,0);
   $('view').innerHTML=`
     ${S.customers.length===0?`<div class="help">👋 Welcome! Start by adding a customer, or open <b>Settings</b> to put in your business name and prices. Nothing here is online — it all saves on this device.</div>`:''}
     <div class="tiles">
       <div class="tile pipe"><div class="n">${money(pipe)}</div><div class="l">Open pipeline</div></div>
       <div class="tile risk"><div class="n">${money(risk)}</div><div class="l">Needs follow-up now</div></div>
-      <div class="tile win"><div class="n">${money(wonMonth)}</div><div class="l">Won (total)</div></div>
+      <div class="tile win"><div class="n">${money(wonMonth)}</div><div class="l">Won this month</div></div>
       <div class="tile"><div class="n">${S.customers.length}</div><div class="l">Customers</div></div>
     </div>
     <div class="card"><div class="between"><h2 style="margin:0">🔔 Follow up today</h2><button class="btn sm sec" onclick="location.hash='followups'">See all</button></div>
@@ -277,9 +277,9 @@ VIEWS.home=function(){
 };
 
 VIEWS.customers=function(){
-  setTitle('Customers'); setTitle('Customers');
-  const term=($('q').value||'').toLowerCase();
-  const list=S.customers.filter(c=>!term||(c.name+' '+c.phone+' '+c.address).toLowerCase().includes(term))
+  setTitle('Customers');
+  const term=($('q').value||'').trim().toLowerCase();
+  const list=S.customers.filter(c=>!term||[c.name,c.phone,c.email,c.address].map(x=>x||'').join(' ').toLowerCase().includes(term))
      .sort((a,b)=>a.name.localeCompare(b.name));
   $('view').innerHTML=`
     <div class="between" style="margin-bottom:14px"><h2 style="margin:0">Customers (${S.customers.length})</h2>
@@ -786,18 +786,21 @@ function showDoc(q,mode){
     +(q.tripFee?`<tr><td>Trip charge</td><td class="c">1</td><td class="r">${money2(q.tripFee)}</td><td class="r">${money2(q.tripFee)}</td></tr>`:'');
   const foot=mode==='invoice'?`<p><b>Amount due: ${money2(t.total)}</b> — payable on receipt. Thank you!</p>`
     :`<p>Valid 30 days. A ${q.depositPct!=null?q.depositPct:S.settings.depositPct}% deposit (${money2(t.dep)}) reserves your spot.</p>`;
+  /* the document wears the client's own colour, same as their app */
+  const AC=(CFG&&CFG.themeColor)||'#1a6feb';
+  const reach=[S.settings.phone,S.settings.email].filter(x=>x&&String(x).trim()).map(esc).join(' · ');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:30px auto;padding:0 22px;line-height:1.5}
-    .top{display:flex;justify-content:space-between;border-bottom:4px solid #1a6feb;padding-bottom:12px;margin-bottom:18px}
-    .co{font-size:18px;font-weight:bold}.muted{color:#666;font-size:12px}h1{color:#1a6feb;margin:0;font-size:24px}
+    .top{display:flex;justify-content:space-between;border-bottom:4px solid ${AC};padding-bottom:12px;margin-bottom:18px}
+    .co{font-size:18px;font-weight:bold}.muted{color:#666;font-size:12px}h1{color:${AC};margin:0;font-size:24px}
     .grid{display:flex;justify-content:space-between;gap:18px;margin:12px 0 16px;font-size:13px}
-    table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a6feb;color:#fff;text-align:left;padding:8px 10px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th{background:${AC};color:#fff;text-align:left;padding:8px 10px}
     td{padding:8px 10px;border-bottom:1px solid #eee}.c{text-align:center}.r{text-align:right}
     .tot{margin-left:auto;width:260px;margin-top:12px}.tot div{display:flex;justify-content:space-between;padding:3px 0}
-    .g{border-top:2px solid #1a6feb;margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:#1a6feb}
-    .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid #1a6feb;padding:9px 13px;font-size:13px}
+    .g{border-top:2px solid ${AC};margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:${AC}}
+    .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid ${AC};padding:9px 13px;font-size:13px}
   </style></head><body>
-    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured</div></div>
+    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured${reach?'<br>'+reach:''}</div></div>
       <div style="text-align:right"><h1>${mode==='invoice'?'INVOICE':'ESTIMATE'}</h1><div class="muted">${no}<br>${now.toLocaleDateString()}</div></div></div>
     <div class="grid"><div><div class="muted">BILL TO</div><b>${esc(c.name||'')}</b><br>${esc(c.phone||'')}</div>
       <div><div class="muted">SERVICE ADDRESS</div>${esc(q.addr||c.address||'')}</div></div>
@@ -819,6 +822,8 @@ VIEWS.settings=function(){
       <div class="row r3" style="margin-top:12px"><div><label class="f">Shop ZIP / city</label><input id="sShop" value="${esc(S.settings.shopZip)}"></div>
         <div><label class="f">Tax rate %</label><input id="sTax" type="number" value="${S.settings.taxRate}"></div>
         <div><label class="f">Default deposit %</label><input id="sDep" type="number" value="${S.settings.depositPct}"></div></div>
+      <div class="row r2" style="margin-top:12px"><div><label class="f">Your phone (prints on quotes)</label><input id="sPhone" value="${esc(S.settings.phone)}" placeholder="(352) 555-0100"></div>
+        <div><label class="f">Your email (prints on quotes)</label><input id="sEmail" value="${esc(S.settings.email)}" placeholder="you@yourbusiness.com"></div></div>
       <button class="btn" style="margin-top:14px" onclick="saveSettings()">Save business info</button>
     </div>
     <div class="card"><div class="between"><h2 style="margin:0">Pricebook — ${BOOKS[tr].label}</h2><button class="btn sm sec" onclick="addBookRow()">+ Add service</button></div>
@@ -841,8 +846,13 @@ function renderBookRows(){ const rows=book(S.settings.trade);
 function addBookRow(){ S.pricebook[S.settings.trade]=book(S.settings.trade).concat([{name:'New service',price:0}]); save(); renderBookRows(); }
 function delBookRow(i){ const b=book(S.settings.trade).slice(); b.splice(i,1); S.pricebook[S.settings.trade]=b; save(); renderBookRows(); }
 function saveBook(){ const b=[]; $('bookRows').querySelectorAll('[data-bn]').forEach(inp=>{ const i=inp.dataset.bn; b.push({name:inp.value.trim()||'Service',price:parseFloat($('bookRows').querySelector(`[data-bp="${i}"]`).value)||0}); }); S.pricebook[S.settings.trade]=b; logAct('Updated pricebook'); save(); alert('Pricebook saved.'); }
-function saveSettings(){ S.settings.business=$('sBiz').value.trim()||'Your Business'; const nt=$('sTrade').value; S.settings.trade=nt; S.settings.shopZip=$('sShop').value.trim(); S.settings.shopGeo=null; S.settings.taxRate=parseFloat($('sTax').value)||0; S.settings.depositPct=parseFloat($('sDep').value)||0; logAct('Updated business settings'); save(); renderNav(); router(); }
-function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='business-hub-backup.json'; a.click(); }
+function saveSettings(){ S.settings.business=$('sBiz').value.trim()||'Your Business'; const nt=$('sTrade').value; S.settings.trade=nt; S.settings.shopZip=$('sShop').value.trim(); S.settings.shopGeo=null; S.settings.taxRate=parseFloat($('sTax').value)||0; S.settings.depositPct=parseFloat($('sDep').value)||0; S.settings.phone=$('sPhone').value.trim(); S.settings.email=$('sEmail').value.trim(); logAct('Updated business settings'); save(); renderNav(); router(); }
+/* backup filename says whose data it is and when — so a folder of them stays sortable */
+function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const slug=(S.settings.business||'business').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'business';
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=slug+'-backup-'+iso(todayD())+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000); }
 function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.settings)throw 0; S=d; if(!S.activity)S.activity=[]; save(); alert('Backup imported.'); renderNav(); location.hash='home'; router(); }catch(err){ alert('That file was not a valid backup.'); } }; r.readAsText(f); }
 function resetData(){ if(confirm('Erase all data on this device and start fresh?')){ localStorage.removeItem(KEY); S=loadState(); save(); renderNav(); location.hash='home'; router(); } }
 
@@ -852,6 +862,10 @@ VIEWS.help=function(){ setTitle('How to use this');
     <h2>The 4 things you'll do most</h2>
     <p><b>1. Add a customer.</b> Tap <b>Customers → Add customer</b>. Just their name and phone is enough.</p>
     <p><b>2. Make a quote.</b> Tap <b>＋ New quote</b> at the top. Pick the customer, check the work, type the address and tap “Look up”, then <b>Save & make PDF</b>. Text the PDF to your customer.</p>
+    <p><b>2b. The shortcut.</b> On the New quote screen, the yellow box at the top will do it for you. Paste the customer's
+       text message (or tap <b>Choose file</b> and pick their job sheet or a PDF) and tap <b>Read it &amp; fill the quote</b>.
+       It ticks the work, counts the quantities, and fills in their name, phone and address. Always glance over it —
+       tap <b>Undo</b> if it got something wrong.</p>
     <p><b>3. Follow up.</b> The <b>Follow-ups</b> tab (red number in the sidebar) shows exactly who to call back today, and how much money is waiting.</p>
     <p><b>4. Win the job.</b> Open the quote and tap <b>Mark Won</b>, then set a date — it shows up in your <b>Schedule</b>.</p>
     <div class="help">Everything saves on this device and works with no signal. Use <b>Settings → Export backup</b> now and then to keep a copy safe. You can't break it.</div>

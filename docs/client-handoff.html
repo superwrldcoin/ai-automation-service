@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client handoff</title>
+  <style>
+    :root { --ink:#12212e; --accent:#1a6feb; --bg:#f7f9fc; --line:#e6ebf1; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }
+    .wrap { max-width:760px; margin:0 auto; padding:36px 22px 60px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(18,33,46,.04); }
+    h1 { margin:0 0 8px; font-size:32px; }
+    .sub { color:#5a6b7b; margin:0 0 20px; }
+    .cta { display:inline-block; background:var(--accent); color:#fff; text-decoration:none; font-weight:700; padding:12px 22px; border-radius:10px; margin:10px 0 18px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0; }
+    .grid div { background:#f9fbff; border:1px solid var(--line); border-radius:10px; padding:12px; }
+    .label { display:block; font-size:11px; color:#5a6b7b; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; }
+    ul, ol { padding-left:18px; }
+    .footer { padding-top:18px; border-top:1px solid var(--line); margin-top:18px; color:#5a6b7b; font-size:13px; }
+    @media (max-width: 640px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Client handoff</h1>
+      <p class="sub">Production-ready access and onboarding for a new client workspace.</p>
+      <a class="cta" href="crm.html">Open the Business Hub</a>
+      <div class="grid">
+        <div>
+          <span class="label">Access</span>
+          Client app is deployed as a self-contained static site and works on desktop or mobile.
+        </div>
+        <div>
+          <span class="label">Support</span>
+          hello@vividstatic.com
+        </div>
+      </div>
+      <h2>What a client receives</h2>
+      <ul>
+        <li>Brand-specific dashboard and workflow</li>
+        <li>Customer and job history</li>
+        <li>Quote builder with pricing and PDF export</li>
+        <li>Follow-up and schedule tracking</li>
+        <li>Offline-friendly installation for day-to-day work</li>
+      </ul>
+      <h2>What we need before launch</h2>
+      <ol>
+        <li>Confirm final business name, trade, contact info, and support email.</li>
+        <li>Review the pricebook and taxes for that client.</li>
+        <li>Publish the branded client folder to the chosen hosting location.</li>
+        <li>Send the client the access page and short onboarding guide.</li>
+      </ol>
+      <div class="footer">Built by <strong>Vivid Static Lab</strong> · secure, private, and owner-operated.</div>
+    </div>
+  </div>
+</body>
+</html>
