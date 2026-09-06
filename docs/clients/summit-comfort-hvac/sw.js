@@ -1,6 +1,6 @@
 /* Offline cache for this client's app only. */
-const CACHE='client-cache-v1';
-const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json',
+const CACHE='client-cache-v2';
+const ASSETS=['./','./crm.html','./config.json','./manifest-crm.json','./client-handoff.html',
   './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all(ASSETS.map(u=>c.add(u).catch(()=>null)))).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});

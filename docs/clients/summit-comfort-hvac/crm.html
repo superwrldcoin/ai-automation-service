@@ -82,6 +82,14 @@
   .flex{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .between{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
   .acts{ display:flex; gap:5px; flex-wrap:wrap; }
+  /* auto-fill (read a description / file into the quote) */
+  .assist{ border-color:var(--gold); background:#fffdf6; }
+  .tagline{ display:inline-block; background:var(--gold); color:#3a2e10; font-weight:700; font-size:10px;
+            letter-spacing:.5px; padding:2px 8px; border-radius:20px; vertical-align:middle; margin-left:6px; }
+  .found{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .found .chip{ background:#fff; border:1px solid #e3d8b6; border-radius:20px; padding:3px 10px; font-size:12.5px; }
+  .found .chip b{ color:#7a5f14; }
+  .aok{ color:var(--ok); font-weight:600; } .abad{ color:var(--warn); font-weight:600; }
   /* overlay/modal */
   .overlay{ position:fixed; inset:0; background:rgba(18,33,46,.6); display:none; align-items:center; justify-content:center; padding:16px; z-index:60; }
   .overlay.open{ display:flex; }
@@ -137,7 +145,6 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 /* =================== data =================== */
 const BOOKS = {
@@ -148,11 +155,12 @@ const BOOKS = {
 };
 let KEY='crm_v1';           /* becomes crm_<clientId> when a config.json is present */
 let CFG=null;              /* per-client config, loaded at boot */
-const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50}, pricebook:{}, customers:[], quotes:[], activity:[] };
+const DEFAULTS={ settings:{business:'Your Business',trade:'hvac',taxRate:7,shopZip:'Gainesville, FL',shopGeo:null,depositPct:50,phone:'',email:''}, pricebook:{}, customers:[], quotes:[], activity:[] };
 let S;
 function applyConfig(st){ if(!CFG)return st; const c=CFG, s=st.settings;
   if(c.business)s.business=c.business; if(c.trade&&BOOKS[c.trade])s.trade=c.trade;
   if(c.shopZip)s.shopZip=c.shopZip; if(c.taxRate!=null)s.taxRate=c.taxRate; if(c.depositPct!=null)s.depositPct=c.depositPct;
+  if(c.businessPhone)s.phone=c.businessPhone; if(c.businessEmail)s.email=c.businessEmail;
   if(c.pricebook){ for(const k in c.pricebook) st.pricebook[k]=c.pricebook[k]; } return st; }
 function loadState(){ try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s&&s.settings){ if(!s.pricebook||!Object.keys(s.pricebook).length) seedBook(s); if(!s.activity)s.activity=[]; return s; } }catch(e){} const init=JSON.parse(JSON.stringify(DEFAULTS)); seedBook(init); applyConfig(init); return init; }
 function seedBook(st){ st.pricebook={}; for(const k in BOOKS){ st.pricebook[k]=BOOKS[k].items.map(it=>({name:it[0],price:it[1]})); } }
@@ -235,21 +243,21 @@ function setTitle(t){ $('viewTitle').textContent=t; }
 
 VIEWS.home=function(){
   setTitle('Home');
-  let pipe=0,risk=0,won=0; const t=todayD();
+  let pipe=0,risk=0,wonMonth=0; const now=new Date();
   S.quotes.forEach(q=>{ const st=fuStatus(q); const tot=qTotals(q).total;
-    if(st==='won'){ if(new Date(q.wonAt||q.sent||'').getMonth()===new Date().getMonth()) won+=tot; won=won; }
+    if(st==='won'){ const d=q.wonAt?new Date(q.wonAt):(q.sent?parseD(q.sent):now);
+      if(d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()) wonMonth+=tot; }
     if(['quoted','due','over','lead'].includes(st)) pipe+=tot;
     if(['due','over'].includes(st)) risk+=tot; });
   const dueList=S.quotes.filter(q=>['due','over'].includes(fuStatus(q)))
      .sort((a,b)=>addDays(a.sent,a.followDays||3)-addDays(b.sent,b.followDays||3));
   const upcoming=S.quotes.filter(q=>q.scheduledDate&&q.stage!=='lost').sort((a,b)=>parseD(a.scheduledDate)-parseD(b.scheduledDate)).slice(0,5);
-  const wonMonth=S.quotes.filter(q=>q.stage==='won').reduce((s,q)=>s+qTotals(q).total,0);
   $('view').innerHTML=`
     ${S.customers.length===0?`<div class="help">👋 Welcome! Start by adding a customer, or open <b>Settings</b> to put in your business name and prices. Nothing here is online — it all saves on this device.</div>`:''}
     <div class="tiles">
       <div class="tile pipe"><div class="n">${money(pipe)}</div><div class="l">Open pipeline</div></div>
       <div class="tile risk"><div class="n">${money(risk)}</div><div class="l">Needs follow-up now</div></div>
-      <div class="tile win"><div class="n">${money(wonMonth)}</div><div class="l">Won (total)</div></div>
+      <div class="tile win"><div class="n">${money(wonMonth)}</div><div class="l">Won this month</div></div>
       <div class="tile"><div class="n">${S.customers.length}</div><div class="l">Customers</div></div>
     </div>
     <div class="card"><div class="between"><h2 style="margin:0">🔔 Follow up today</h2><button class="btn sm sec" onclick="location.hash='followups'">See all</button></div>
@@ -269,9 +277,9 @@ VIEWS.home=function(){
 };
 
 VIEWS.customers=function(){
-  setTitle('Customers'); setTitle('Customers');
-  const term=($('q').value||'').toLowerCase();
-  const list=S.customers.filter(c=>!term||(c.name+' '+c.phone+' '+c.address).toLowerCase().includes(term))
+  setTitle('Customers');
+  const term=($('q').value||'').trim().toLowerCase();
+  const list=S.customers.filter(c=>!term||[c.name,c.phone,c.email,c.address].map(x=>x||'').join(' ').toLowerCase().includes(term))
      .sort((a,b)=>a.name.localeCompare(b.name));
   $('view').innerHTML=`
     <div class="between" style="margin-bottom:14px"><h2 style="margin:0">Customers (${S.customers.length})</h2>
@@ -396,6 +404,20 @@ VIEWS.newquote=function(arg){
   const c=arg?cust(arg):null;
   $('view').innerHTML=`
     <span class="backlink" onclick="history.back()">← Back</span>
+    <div class="card assist">
+      <h2 style="margin:0">⚡ Start from a message or a file <span class="tagline">SAVES A MINUTE</span></h2>
+      <p class="muted" style="margin:4px 0 10px">Paste what the customer told you — or upload their text, a job sheet
+        (.csv), or a scope/inspection <b>.pdf</b>. It ticks the matching services, works out the quantities, and fills in
+        the name, phone and address. Nothing is sent anywhere; it reads the file right here on your device.</p>
+      <textarea id="aiText" rows="3" placeholder="e.g. Dana Whitmore at 1012 NE 1st Ave, Gainesville FL 32601 — needs an AC tune-up, 2 smart thermostats and duct cleaning. Call (352) 555-0142."></textarea>
+      <div class="flex" style="margin-top:10px">
+        <label class="btn sec sm" style="cursor:pointer">📎 Choose file<input type="file" id="aiFile" accept=".csv,.txt,.md,.pdf" style="display:none"></label>
+        <button class="btn sm" id="aiGo">✨ Read it &amp; fill the quote</button>
+        <button class="btn sec sm" id="aiUndo" style="display:none">↩ Undo</button>
+        <span id="aiStatus" class="muted"></span>
+      </div>
+      <div class="found" id="aiFound"></div>
+    </div>
     <div class="card">
       <h2>Who's this for?</h2>
       <div class="row r2"><div><label class="f">Customer</label>
@@ -403,9 +425,10 @@ VIEWS.newquote=function(arg){
           <option value="__new">+ Add a new customer…</option></select></div>
         <div><label class="f">Trade / pricebook</label><select id="qTrade">${Object.keys(BOOKS).map(k=>`<option value="${k}" ${k===trade?'selected':''}>${BOOKS[k].label}</option>`).join('')}</select></div>
       </div>
-      <div id="newCustFields" style="display:none;margin-top:12px" class="row r3">
+      <div id="newCustFields" style="display:none;margin-top:12px" class="row r4">
         <div><label class="f">Name *</label><input id="ncName"></div>
         <div><label class="f">Phone</label><input id="ncPhone"></div>
+        <div><label class="f">Email</label><input id="ncEmail"></div>
         <div><label class="f">Address</label><input id="ncAddr"></div>
       </div>
     </div>
@@ -446,6 +469,11 @@ VIEWS.newquote=function(arg){
   $('qSave').onclick=()=>saveQuote(false); $('qSavePdf').onclick=()=>saveQuote(true);
   ['qDisc','qDep'].forEach(id=>$(id).addEventListener('input',qRecalc));
   if(S.customers.length===0){ $('qCust').value='__new'; $('newCustFields').style.display='grid'; }
+  /* auto-fill panel */
+  preAI=null;
+  $('aiGo').onclick=runAutoFill;
+  $('aiUndo').onclick=undoAutoFill;
+  $('aiFile').onchange=e=>{ const f=e.target.files[0]; if(f)$('aiStatus').innerHTML='Ready: <b>'+esc(f.name)+'</b> — now tap “Read it”.'; };
 };
 function renderQCat(){
   const items=book(draft.trade);
@@ -481,7 +509,8 @@ async function qLookupAddr(){
 function saveQuote(makePdf){
   let cid=$('qCust').value;
   if(cid==='__new'){ const n=$('ncName').value.trim(); if(!n){alert('Enter the new customer name.');return;}
-    const nc={id:uid(),name:n,phone:$('ncPhone').value.trim(),address:$('ncAddr').value.trim()||$('qAddr').value.trim(),email:'',notes:'',createdAt:new Date().toISOString()};
+    const nc={id:uid(),name:n,phone:$('ncPhone').value.trim(),address:$('ncAddr').value.trim()||$('qAddr').value.trim(),
+      email:($('ncEmail')?$('ncEmail').value.trim():''),notes:'',createdAt:new Date().toISOString()};
     S.customers.push(nc); cid=nc.id; }
   const items=Object.values(draft.items).concat(draft.extras);
   if(!items.length){ alert('Add at least one service.'); return; }
@@ -492,6 +521,235 @@ function saveQuote(makePdf){
   if(q.stage==='won'){ q.wonAt=new Date().toISOString(); q.scheduledDate=iso(addDays(iso(todayD()),3)); }
   S.quotes.push(q); logAct('Created quote for '+((cust(cid)||{}).name||'')+' — '+money(qTotals(q).total)); save();
   if(makePdf) showDoc(q,'estimate'); else location.hash='quote/'+q.id;
+}
+
+/* ============ auto-fill: read a description, CSV or PDF into the quote ============
+   Runs entirely on this device — no upload, no account, works offline (except the
+   first PDF, which needs to fetch the PDF reader once).                            */
+
+/* plain-English words that mean each stock service. Services the client adds
+   themselves fall back to matching the words in their own name. */
+const SYN={
+  'AC tune-up & maintenance':['tune-up','tune up','tuneup','maintenance','not cooling','service the ac'],
+  'Refrigerant recharge (per lb)':['refrigerant','freon','recharge','low coolant','low on coolant'],
+  'New 3-ton AC system installed':['new system','new ac','replace ac','install ac','new unit','replace the unit','system replacement'],
+  'Smart thermostat install':['thermostat','nest','ecobee'],
+  'Capacitor replacement':['capacitor'],'Duct cleaning':['duct'],'Blower motor replacement':['blower'],
+  'Condenser fan motor':['condenser','fan motor'],'Diagnostic / service call':['diagnostic','service call','not working','inspect'],
+  '40-gal water heater install':['water heater'],'Tankless water heater install':['tankless'],
+  'Main drain cleaning':['drain','clog','clogged','snake the'],'Toilet replacement':['toilet'],
+  'Faucet replacement':['faucet'],'Sump pump replacement':['sump'],'Leak detection':['leak'],
+  'Repipe (per fixture)':['repipe','re-pipe'],'Service call / diagnostic':['service call','diagnostic','inspect'],
+  '200A panel upgrade':['panel','breaker box','service upgrade'],'EV charger install':['ev charger','ev charging','tesla charger','car charger'],
+  'Ceiling fan install':['ceiling fan'],'Recessed lighting (per fixture)':['recessed','can light','lighting'],
+  'Whole-home surge protector':['surge'],'Generator transfer switch':['generator','transfer switch'],
+  'Outlet / switch replacement':['outlet','receptacle','gfci','light switch'],
+  'Full reroof (avg home)':['reroof','new roof','replace roof','roof replacement'],
+  'Shingle replacement (per square)':['shingle'],'Minor roof repair':['roof repair','repair roof','roof leak'],
+  'Gutter replacement (per ft)':['gutter'],'Skylight install':['skylight'],
+  'Attic ventilation':['attic','ventilation','soffit vent'],'Roof inspection':['roof inspection','inspect roof'],
+  'Flashing repair':['flashing'],
+};
+/* when both match, the first wins and the second is dropped */
+const CONFLICT=[['Tankless water heater install','40-gal water heater install']];
+const STOPW=['install','installed','installation','replace','replacement','replaced','service','call','home','with','per','whole','system','unit','your'];
+const NUMWORD={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20};
+/* quantities that come with a unit: "4 lbs of refrigerant", "18 squares", "120 ft of gutter", "six cans" */
+const UNITRE={
+  lb:/\b(\d{1,4}(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:lbs?\b|pounds?\b)/,
+  ft:/\b(\d{1,5}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:ft\b|feet\b|foot\b|lf\b|linear\b)/,
+  square:/\b(\d{1,4}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*squares?\b/,
+  fixture:/\b(\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:fixtures?|outlets?|receptacles?|cans?|lights?)\b/ };
+const ADDR_RE=/\d{1,6}\s+[\w.'-]+(?:\s+[\w.'-]+){0,4}\s+(?:st|street|ave|avenue|rd|road|dr|drive|blvd|boulevard|ln|lane|ct|court|way|pl|place|ter|terrace|cir|circle|pkwy|parkway|hwy|highway|trl|trail)\b\.?(?:\s*(?:apt|unit|ste|#)\s*[\w-]+)?(?:,\s*[A-Za-z][A-Za-z .'-]{0,24}[A-Za-z])?(?:,?\s*[A-Z]{2}\b)?(?:,?\s*\d{5}(?:-\d{4})?)?/i;
+const PHONE_RE=/(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+const EMAIL_RE=/[\w.+-]+@[\w-]+\.[\w.]{2,}/;
+
+function itemWords(name){
+  if(SYN[name]) return SYN[name];
+  return name.toLowerCase().replace(/\([^)]*\)/g,' ').split(/[^a-z0-9]+/).filter(w=>w.length>3&&STOPW.indexOf(w)<0);
+}
+/* how many? "2 thermostats" · "three outlets" · "4 lbs of refrigerant" · "18 squares" */
+function qtyFor(low,word,name){
+  const idx=low.indexOf(word); if(idx<0) return 1;
+  const per=(name.toLowerCase().match(/\(per\s+([a-z]+)/)||[])[1];
+  if(per&&UNITRE[per]){ const m=low.slice(Math.max(0,idx-45),idx+word.length+45).match(UNITRE[per]);
+    if(m){ const n=NUMWORD[m[1]]||(/^[\d.]+$/.test(m[1])?Math.round(parseFloat(m[1])):0); if(n>0&&n<10000) return n; } }
+  const before=low.slice(Math.max(0,idx-16),idx);
+  /* the leading [^\d.$] keeps a price ("...plenum - $180.50") from being read as a quantity */
+  const d=before.match(/(?:^|[^\d.$])(\d{1,3})\s*(?:x\s*)?[a-z]{0,12}\s*$/);
+  if(d){ const n=parseInt(d[1],10); if(n>0&&n<100) return n; }
+  const w=before.match(/([a-z]+)\s+$/);
+  if(w&&NUMWORD[w[1]]) return NUMWORD[w[1]];
+  return 1;
+}
+function matchPricebook(text,items){
+  const low=' '+String(text).toLowerCase().replace(/\s+/g,' ')+' ';
+  const hits=[];
+  items.forEach((it,i)=>{ const w=itemWords(it.name).filter(k=>k).find(k=>low.indexOf(k)>=0);
+    if(w) hits.push({i,name:it.name,qty:qtyFor(low,w,it.name),price:+it.price||0}); });
+  CONFLICT.forEach(pair=>{ if(hits.some(h=>h.name===pair[0])){ const j=hits.findIndex(h=>h.name===pair[1]); if(j>=0)hits.splice(j,1); } });
+  return hits;
+}
+/* named work with its own price on the line — reads a supplier estimate or an
+   inspection report and brings across items that aren't in the pricebook */
+function extractPricedLines(text,taken){
+  const out=[],seen={};
+  String(text).split(/[\n\r;•]+/).forEach(raw=>{
+    const line=raw.replace(/\s+/g,' ').trim(); if(line.length<4||line.length>140) return;
+    const m=line.match(/^[-*•\d.)\s]*([A-Za-z][^$]{2,70}?)\s*[:\-–—]?\s*\$\s?([\d,]+(?:\.\d{1,2})?)$/);
+    if(!m) return;
+    const name=m[1].replace(/[\s.:\-–—]+$/,'').trim(), price=parseFloat(m[2].replace(/,/g,''));
+    if(!name||!(price>0)) return;
+    const key=name.toLowerCase(); if(seen[key]||taken.indexOf(key)>=0) return; seen[key]=1;
+    out.push({name,price,qty:1});
+  });
+  return out.slice(0,12);
+}
+function parseCSV(text){
+  const rows=[]; let f='',row=[],q=false; text=String(text).replace(/\r\n?/g,'\n');
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f='';} else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';} else f+=c; } }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  if(!rows.length) return [];
+  const head=rows.shift().map(h=>h.trim());
+  return rows.filter(r=>r.some(c=>c.trim())).map(r=>{const o={};head.forEach((h,i)=>o[h]=(r[i]==null?'':r[i]).trim());return o;});
+}
+/* a job sheet / price list: match rows to the pricebook where possible, else add as custom lines */
+function applyCSVRows(text){
+  const rows=parseCSV(text); if(!rows.length) return {count:0,contact:{}};
+  const cols=Object.keys(rows[0]), find=re=>cols.find(c=>re.test(c.toLowerCase()));
+  const cCust=find(/customer|client/)||find(/^name$/), cAddr=find(/address|property|site|location/),
+        cPhone=find(/phone|mobile|cell/), cEmail=find(/e-?mail/),
+        cItem=find(/item|service|descr|work|task|job/), cQty=find(/qty|quantit|count/), cPrice=find(/price|rate|amount|cost|total/);
+  const contact={};
+  if(cCust&&rows[0][cCust]) contact.name=rows[0][cCust];
+  if(cAddr&&rows[0][cAddr]) contact.addr=rows[0][cAddr];
+  if(cPhone&&rows[0][cPhone]) contact.phone=rows[0][cPhone];
+  if(cEmail&&rows[0][cEmail]) contact.email=rows[0][cEmail];
+  const items=book(draft.trade); let count=0;
+  rows.forEach(r=>{
+    const name=String((cItem?r[cItem]:r[cols[0]])||'').trim(); if(!name) return;
+    const price=cPrice?parseFloat(String(r[cPrice]).replace(/[$,\s]/g,'')):NaN;
+    const qty=cQty?(parseInt(r[cQty],10)||1):1;
+    const bi=items.findIndex(b=>b.name.toLowerCase()===name.toLowerCase());
+    if(bi>=0){ draft.items[bi]={name:items[bi].name,qty,price:isNaN(price)?+items[bi].price:price}; count++; return; }
+    if(price>0){ draft.extras.push({name,price,qty}); count++; }
+  });
+  return {count,contact};
+}
+function extractContact(text){
+  const out={}, flat=String(text).replace(/\s+/g,' ').trim();
+  const low=flat.toLowerCase();
+  const known=S.customers.find(c=>c.name&&c.name.trim().length>2&&low.indexOf(c.name.trim().toLowerCase())>=0);
+  if(known){ out.customerId=known.id; out.name=known.name; }
+  if(!out.name){
+    const pats=[/(?:[Cc]ustomer|[Cc]lient|[Cc]ontact|[Nn]ame)\s*[:\-]\s*([A-Z][\w'’-]+(?:\s+[A-Z][\w'’-]+){0,2})/,
+                /\b([A-Z][a-z'’-]+\s+[A-Z][a-z'’-]+)\s+(?:at|lives|needs|wants|called|asked)\b/,
+                /^([A-Z][a-z'’-]+\s+[A-Z][a-z'’-]+)\b/];
+    for(let i=0;i<pats.length;i++){ const m=flat.match(pats[i]); if(m){ out.name=m[1].trim(); break; } }
+  }
+  const a=flat.match(ADDR_RE); if(a) out.addr=a[0].replace(/\s+,/g,',').trim();
+  const p=flat.match(PHONE_RE); if(p) out.phone=p[0].trim();
+  const e=flat.match(EMAIL_RE); if(e) out.email=e[0].trim();
+  return out;
+}
+/* pdf.js is fetched only when someone actually picks a PDF — keeps boot instant and offline-clean */
+let pdfPromise=null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(pdfPromise) return pdfPromise;
+  pdfPromise=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>res(window.pdfjsLib);
+    s.onerror=()=>{ pdfPromise=null; rej(new Error('Reading PDFs needs internet the first time. Copy the text out and paste it above instead.')); };
+    document.head.appendChild(s);
+  });
+  return pdfPromise;
+}
+async function readUpload(file){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext==='pdf'){
+    const lib=await loadPdfJs();
+    lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await lib.getDocument({data:await file.arrayBuffer()}).promise; let t='';
+    for(let p=1;p<=pdf.numPages;p++){ const pg=await pdf.getPage(p); t+=(await pg.getTextContent()).items.map(x=>x.str).join(' ')+'\n'; }
+    if(!t.replace(/\s/g,'')) throw new Error('That PDF is a scan (no text inside it). Type the details above instead.');
+    return {kind:'text',text:t};
+  }
+  return {kind:ext==='csv'?'csv':'text',text:await file.text()};
+}
+
+/* --- apply / undo --- */
+let preAI=null;
+const NCF=['ncName','ncPhone','ncEmail','ncAddr'];
+function snapAI(){
+  preAI={ items:JSON.parse(JSON.stringify(draft.items)), extras:JSON.parse(JSON.stringify(draft.extras)),
+    tripFee:draft.tripFee, miles:draft.miles, geo:draft.geo, sel:$('qCust').value, addr:$('qAddr').value,
+    nc:NCF.map(id=>$(id)?$(id).value:''), status:$('qAddrStatus').innerHTML };
+}
+function undoAutoFill(){
+  if(!preAI) return;
+  draft.items=preAI.items; draft.extras=preAI.extras; draft.tripFee=preAI.tripFee; draft.miles=preAI.miles; draft.geo=preAI.geo;
+  $('qCust').value=preAI.sel; $('newCustFields').style.display=preAI.sel==='__new'?'grid':'none';
+  NCF.forEach((id,i)=>{ if($(id))$(id).value=preAI.nc[i]; });
+  $('qAddr').value=preAI.addr; $('qAddrStatus').innerHTML=preAI.status;
+  $('aiFound').innerHTML=''; $('aiStatus').textContent='Undone — the quote is back how it was.';
+  $('aiUndo').style.display='none'; preAI=null; renderQCat();
+}
+function applyContact(c){
+  const chips=[];
+  if(c.customerId){
+    const cc=cust(c.customerId)||{};
+    $('qCust').value=c.customerId; $('newCustFields').style.display='none';
+    chips.push('Existing customer <b>'+esc(cc.name)+'</b>');
+    if(!$('qAddr').value.trim()&&cc.address) $('qAddr').value=cc.address;
+  } else if(c.name){
+    $('qCust').value='__new'; $('newCustFields').style.display='grid';
+    if($('ncName'))$('ncName').value=c.name;
+    chips.push('New customer <b>'+esc(c.name)+'</b>');
+  }
+  const isNew=$('qCust').value==='__new';
+  if(c.phone){ if(isNew&&$('ncPhone'))$('ncPhone').value=c.phone; chips.push('Phone <b>'+esc(c.phone)+'</b>'+(isNew?'':' (not saved to their record)')); }
+  if(c.email){ if(isNew&&$('ncEmail'))$('ncEmail').value=c.email; chips.push('Email <b>'+esc(c.email)+'</b>'+(isNew?'':' (not saved to their record)')); }
+  if(c.addr){ $('qAddr').value=c.addr; if(isNew&&$('ncAddr'))$('ncAddr').value=c.addr; chips.push('Address <b>'+esc(c.addr)+'</b>'); }
+  return chips;
+}
+async function runAutoFill(){
+  const st=$('aiStatus'), typed=$('aiText').value||'', f=$('aiFile').files[0];
+  st.innerHTML='Reading…'; $('aiFound').innerHTML='';
+  try{
+    let fileText='',csv=null;
+    if(f){ const r=await readUpload(f); fileText=r.text; if(r.kind==='csv')csv=r.text; }
+    const prose=(typed+(csv?'':'\n'+fileText)).trim();
+    if(!prose&&!csv){ st.innerHTML='<span class="abad">Paste a few words, or choose a file first.</span>'; return; }
+    snapAI();
+    const rows=csv?applyCSVRows(csv):{count:0,contact:{}};
+    const hits=matchPricebook(prose,book(draft.trade));
+    hits.forEach(h=>{ draft.items[h.i]={name:h.name,qty:h.qty,price:h.price}; });
+    const taken=hits.map(h=>h.name.toLowerCase());
+    const priced=extractPricedLines(prose,taken);
+    priced.forEach(p=>draft.extras.push(p));
+    renderQCat();
+
+    const c=Object.assign(extractContact(prose||typed),rows.contact);
+    if(!c.customerId&&c.name){ const m=S.customers.find(x=>x.name.trim().toLowerCase()===c.name.trim().toLowerCase()); if(m)c.customerId=m.id; }
+    const chips=applyContact(c);
+    hits.forEach(h=>chips.push(esc(h.name)+(h.qty>1?' <b>×'+h.qty+'</b>':'')));
+    priced.forEach(p=>chips.push(esc(p.name)+' <b>'+money2(p.price)+'</b> <span class="muted">custom</span>'));
+    if(rows.count) chips.push('<b>'+rows.count+'</b> line(s) from the file');
+    $('aiFound').innerHTML=chips.map(t=>'<span class="chip">'+t+'</span>').join('');
+
+    const n=hits.length+priced.length+rows.count;
+    st.innerHTML = n ? '<span class="aok">✓ Filled in</span> — '+n+' line(s). Look it over below, change anything, then Save.'
+                     : '<span class="abad">No services matched.</span> Tick the work by hand below (or add it in Settings → pricebook).';
+    $('aiUndo').style.display='inline-block';
+    if(c.addr&&navigator.onLine) qLookupAddr();
+    $('qCat').scrollIntoView({behavior:'smooth',block:'center'});
+  }catch(e){
+    st.innerHTML='<span class="abad">'+esc(e&&e.message?e.message:'Could not read that file.')+'</span>';
+  }
 }
 
 VIEWS.quote=function(arg){
@@ -533,18 +791,21 @@ function showDoc(q,mode){
     +(q.tripFee?`<tr><td>Trip charge</td><td class="c">1</td><td class="r">${money2(q.tripFee)}</td><td class="r">${money2(q.tripFee)}</td></tr>`:'');
   const foot=mode==='invoice'?`<p><b>Amount due: ${money2(t.total)}</b> — payable on receipt. Thank you!</p>`
     :`<p>Valid 30 days. A ${q.depositPct!=null?q.depositPct:S.settings.depositPct}% deposit (${money2(t.dep)}) reserves your spot.</p>`;
+  /* the document wears the client's own colour, same as their app */
+  const AC=(CFG&&CFG.themeColor)||'#1a6feb';
+  const reach=[S.settings.phone,S.settings.email].filter(x=>x&&String(x).trim()).map(esc).join(' · ');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     body{font-family:Arial,sans-serif;color:#1a1a1a;max-width:720px;margin:30px auto;padding:0 22px;line-height:1.5}
-    .top{display:flex;justify-content:space-between;border-bottom:4px solid #1a6feb;padding-bottom:12px;margin-bottom:18px}
-    .co{font-size:18px;font-weight:bold}.muted{color:#666;font-size:12px}h1{color:#1a6feb;margin:0;font-size:24px}
+    .top{display:flex;justify-content:space-between;border-bottom:4px solid ${AC};padding-bottom:12px;margin-bottom:18px}
+    .co{font-size:18px;font-weight:bold}.muted{color:#666;font-size:12px}h1{color:${AC};margin:0;font-size:24px}
     .grid{display:flex;justify-content:space-between;gap:18px;margin:12px 0 16px;font-size:13px}
-    table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a6feb;color:#fff;text-align:left;padding:8px 10px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th{background:${AC};color:#fff;text-align:left;padding:8px 10px}
     td{padding:8px 10px;border-bottom:1px solid #eee}.c{text-align:center}.r{text-align:right}
     .tot{margin-left:auto;width:260px;margin-top:12px}.tot div{display:flex;justify-content:space-between;padding:3px 0}
-    .g{border-top:2px solid #1a6feb;margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:#1a6feb}
-    .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid #1a6feb;padding:9px 13px;font-size:13px}
+    .g{border-top:2px solid ${AC};margin-top:6px;padding-top:6px;font-weight:bold;font-size:16px;color:${AC}}
+    .notes{margin-top:16px;background:#f7f9fc;border-left:3px solid ${AC};padding:9px 13px;font-size:13px}
   </style></head><body>
-    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured</div></div>
+    <div class="top"><div><div class="co">${esc(S.settings.business)}</div><div class="muted">${b.label} · Licensed &amp; insured${reach?'<br>'+reach:''}</div></div>
       <div style="text-align:right"><h1>${mode==='invoice'?'INVOICE':'ESTIMATE'}</h1><div class="muted">${no}<br>${now.toLocaleDateString()}</div></div></div>
     <div class="grid"><div><div class="muted">BILL TO</div><b>${esc(c.name||'')}</b><br>${esc(c.phone||'')}</div>
       <div><div class="muted">SERVICE ADDRESS</div>${esc(q.addr||c.address||'')}</div></div>
@@ -566,6 +827,8 @@ VIEWS.settings=function(){
       <div class="row r3" style="margin-top:12px"><div><label class="f">Shop ZIP / city</label><input id="sShop" value="${esc(S.settings.shopZip)}"></div>
         <div><label class="f">Tax rate %</label><input id="sTax" type="number" value="${S.settings.taxRate}"></div>
         <div><label class="f">Default deposit %</label><input id="sDep" type="number" value="${S.settings.depositPct}"></div></div>
+      <div class="row r2" style="margin-top:12px"><div><label class="f">Your phone (prints on quotes)</label><input id="sPhone" value="${esc(S.settings.phone)}" placeholder="(352) 555-0100"></div>
+        <div><label class="f">Your email (prints on quotes)</label><input id="sEmail" value="${esc(S.settings.email)}" placeholder="you@yourbusiness.com"></div></div>
       <button class="btn" style="margin-top:14px" onclick="saveSettings()">Save business info</button>
     </div>
     <div class="card"><div class="between"><h2 style="margin:0">Pricebook — ${BOOKS[tr].label}</h2><button class="btn sm sec" onclick="addBookRow()">+ Add service</button></div>
@@ -588,8 +851,13 @@ function renderBookRows(){ const rows=book(S.settings.trade);
 function addBookRow(){ S.pricebook[S.settings.trade]=book(S.settings.trade).concat([{name:'New service',price:0}]); save(); renderBookRows(); }
 function delBookRow(i){ const b=book(S.settings.trade).slice(); b.splice(i,1); S.pricebook[S.settings.trade]=b; save(); renderBookRows(); }
 function saveBook(){ const b=[]; $('bookRows').querySelectorAll('[data-bn]').forEach(inp=>{ const i=inp.dataset.bn; b.push({name:inp.value.trim()||'Service',price:parseFloat($('bookRows').querySelector(`[data-bp="${i}"]`).value)||0}); }); S.pricebook[S.settings.trade]=b; logAct('Updated pricebook'); save(); alert('Pricebook saved.'); }
-function saveSettings(){ S.settings.business=$('sBiz').value.trim()||'Your Business'; const nt=$('sTrade').value; S.settings.trade=nt; S.settings.shopZip=$('sShop').value.trim(); S.settings.shopGeo=null; S.settings.taxRate=parseFloat($('sTax').value)||0; S.settings.depositPct=parseFloat($('sDep').value)||0; logAct('Updated business settings'); save(); renderNav(); router(); }
-function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='business-hub-backup.json'; a.click(); }
+function saveSettings(){ S.settings.business=$('sBiz').value.trim()||'Your Business'; const nt=$('sTrade').value; S.settings.trade=nt; S.settings.shopZip=$('sShop').value.trim(); S.settings.shopGeo=null; S.settings.taxRate=parseFloat($('sTax').value)||0; S.settings.depositPct=parseFloat($('sDep').value)||0; S.settings.phone=$('sPhone').value.trim(); S.settings.email=$('sEmail').value.trim(); logAct('Updated business settings'); save(); renderNav(); router(); }
+/* backup filename says whose data it is and when — so a folder of them stays sortable */
+function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const slug=(S.settings.business||'business').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'business';
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=slug+'-backup-'+iso(todayD())+'.json'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000); }
 function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.settings)throw 0; S=d; if(!S.activity)S.activity=[]; save(); alert('Backup imported.'); renderNav(); location.hash='home'; router(); }catch(err){ alert('That file was not a valid backup.'); } }; r.readAsText(f); }
 function resetData(){ if(confirm('Erase all data on this device and start fresh?')){ localStorage.removeItem(KEY); S=loadState(); save(); renderNav(); location.hash='home'; router(); } }
 
@@ -599,6 +867,10 @@ VIEWS.help=function(){ setTitle('How to use this');
     <h2>The 4 things you'll do most</h2>
     <p><b>1. Add a customer.</b> Tap <b>Customers → Add customer</b>. Just their name and phone is enough.</p>
     <p><b>2. Make a quote.</b> Tap <b>＋ New quote</b> at the top. Pick the customer, check the work, type the address and tap “Look up”, then <b>Save & make PDF</b>. Text the PDF to your customer.</p>
+    <p><b>2b. The shortcut.</b> On the New quote screen, the yellow box at the top will do it for you. Paste the customer's
+       text message (or tap <b>Choose file</b> and pick their job sheet or a PDF) and tap <b>Read it &amp; fill the quote</b>.
+       It ticks the work, counts the quantities, and fills in their name, phone and address. Always glance over it —
+       tap <b>Undo</b> if it got something wrong.</p>
     <p><b>3. Follow up.</b> The <b>Follow-ups</b> tab (red number in the sidebar) shows exactly who to call back today, and how much money is waiting.</p>
     <p><b>4. Win the job.</b> Open the quote and tap <b>Mark Won</b>, then set a date — it shows up in your <b>Schedule</b>.</p>
     <div class="help">Everything saves on this device and works with no signal. Use <b>Settings → Export backup</b> now and then to keep a copy safe. You can't break it.</div>
