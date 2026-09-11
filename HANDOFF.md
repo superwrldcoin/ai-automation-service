@@ -44,6 +44,9 @@ rent it."* No-brainer offer = free working sample on their real data + a guarant
 - **Hosting options:** folder on one free site (data still isolated) · free Netlify subdomain ·
   custom domain (upsell). Live sample: `/clients/summit-comfort-hvac/` (orange theme).
 - **Offline + installable:** PWA manifests + `sw.js` service worker; installs as a phone icon.
+- **Quality gates:** `tests/` (stdlib `unittest`, no install needed) covers the generator and
+  `docforge.py`, plus static-site integrity (JSON validity, internal links). CI runs it on
+  every push via `.github/workflows/ci.yml`. See `tests/README.md`.
 
 ## 6. Everything a client receives (deliverables)
 **The branded Business Hub CRM** with: Home dashboard (KPIs, today's follow-ups, upcoming
