@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Community | Vivid Static Lab</title>
+<link rel="icon" href="icons/favicon-64.png">
+<meta name="theme-color" content="#1a6feb">
+<style>
+  :root { --ink:#12212e; --accent:#1a6feb; --bg:#f7f9fc; --line:#e6ebf1; --muted:#5a6b7b; --gold:#c8a24a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+  .wrap { max-width:940px; margin:0 auto; padding:0 22px; }
+  header { background:linear-gradient(135deg,#12212e,#1a3d5c); color:#fff; padding:54px 0 46px; }
+  .back { color:#cfe0ff; text-decoration:none; font-size:14px; font-weight:600; }
+  h1 { margin:18px 0 8px; font-size:34px; line-height:1.15; }
+  header p { max-width:660px; margin:0; color:#dce9fb; font-size:17px; }
+  main { padding:30px 0 54px; }
+  .intro { display:flex; justify-content:space-between; gap:20px; align-items:center; margin-bottom:24px; }
+  .intro h2 { margin:0 0 4px; font-size:23px; }
+  .intro p { color:var(--muted); margin:0; }
+  .btn { display:inline-block; border:0; border-radius:9px; padding:11px 16px; background:var(--accent); color:#fff; text-decoration:none; font:inherit; font-weight:700; white-space:nowrap; }
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .filter { border:1px solid var(--line); border-radius:999px; padding:7px 12px; background:#fff; color:#41586b; font:inherit; font-size:13px; cursor:pointer; }
+  .filter.on { color:#fff; border-color:var(--accent); background:var(--accent); }
+  .board { display:grid; gap:12px; }
+  .topic { display:block; background:#fff; border:1px solid var(--line); border-radius:12px; padding:17px; text-decoration:none; color:inherit; }
+  .topic:hover { border-color:#aac9fa; box-shadow:0 5px 18px rgba(26,111,235,.08); }
+  .topic-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+  .topic h3 { margin:0 0 5px; font-size:17px; }
+  .topic p { margin:0; color:var(--muted); font-size:14px; }
+  .tag { display:inline-block; margin-top:11px; padding:3px 8px; border-radius:999px; background:#edf3ff; color:#27558f; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .tag.client { background:#e8f5ed; color:#207544; }
+  .tag.idea { background:#fff3d7; color:#825b05; }
+  .meta { color:#789; font-size:12px; white-space:nowrap; }
+  .notice { margin-top:28px; padding:17px 18px; border-left:4px solid var(--gold); border-radius:8px; background:#fffaf0; color:#594718; }
+  .notice b { color:var(--ink); }
+  footer { padding:30px 0 40px; color:var(--muted); text-align:center; font-size:13px; }
+  @media (max-width:640px) { .intro { display:block; } .intro .btn { margin-top:14px; } .topic-head { display:block; } .meta { margin-top:8px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="back" href="index.html">&larr; Vivid Static Lab</a>
+    <h1>Community board</h1>
+    <p>A simple place for prospective clients, current clients, and developers to follow the product, ask useful questions, and shape what gets built next.</p>
+  </div>
+</header>
+<main class="wrap">
+  <div class="intro">
+    <div>
+      <h2>Clear discussions, no jargon</h2>
+      <p>Choose a topic below or start one. We keep client data and private support requests out of the public conversation.</p>
+    </div>
+    <a class="btn" href="mailto:hello@vividstatic.com?subject=Community%20topic%3A%20">Start a topic</a>
+  </div>
+  <div class="filters" aria-label="Filter topics">
+    <button class="filter on" type="button" data-filter="all">All topics</button>
+    <button class="filter" type="button" data-filter="client">For clients</button>
+    <button class="filter" type="button" data-filter="idea">Product ideas</button>
+    <button class="filter" type="button" data-filter="developer">For developers</button>
+  </div>
+  <div class="board" id="board">
+    <a class="topic" data-kind="client" href="mailto:hello@vividstatic.com?subject=Question%3A%20Getting%20the%20app%20on%20my%20phone">
+      <div class="topic-head"><div><h3>Getting the app on my phone</h3><p>How the one-tap home-screen app works, including the first install and offline use.</p><span class="tag client">For clients</span></div><span class="meta">Pinned guide</span></div>
+    </a>
+    <a class="topic" data-kind="client" href="mailto:hello@vividstatic.com?subject=Question%3A%20Keeping%20my%20customer%20information%20safe">
+      <div class="topic-head"><div><h3>Keeping customer information safe</h3><p>What stays on the device, when to export a backup, and how to move it to a new phone.</p><span class="tag client">For clients</span></div><span class="meta">Pinned guide</span></div>
+    </a>
+    <a class="topic" data-kind="idea" href="mailto:hello@vividstatic.com?subject=Product%20idea%3A%20">
+      <div class="topic-head"><div><h3>What should make quoting easier?</h3><p>Share the repetitive step that slows down your estimates, invoices, or follow-up work.</p><span class="tag idea">Product idea</span></div><span class="meta">Open for ideas</span></div>
+    </a>
+    <a class="topic" data-kind="developer" href="mailto:hello@vividstatic.com?subject=Developer%20discussion%3A%20">
+      <div class="topic-head"><div><h3>Building dependable local-first tools</h3><p>Discuss PWA delivery, client configuration, offline behavior, and safe future integrations.</p><span class="tag">For developers</span></div><span class="meta">Technical</span></div>
+    </a>
+  </div>
+  <div class="notice"><b>Private support:</b> Do not post customer names, addresses, invoices, or other private business information. Send support requests directly to <a href="mailto:hello@vividstatic.com">hello@vividstatic.com</a> instead.</div>
+</main>
+<footer>Built by <strong>Vivid Static Lab</strong> &middot; Practical automation for small businesses</footer>
+<script>
+  document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('.filter').forEach(item => item.classList.remove('on'));
+    button.classList.add('on');
+    const filter = button.dataset.filter;
+    document.querySelectorAll('.topic').forEach(topic => {
+      topic.hidden = filter !== 'all' && topic.dataset.kind !== filter;
+    });
+  }));
+</script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 /* Simple offline cache so the tools work at a job site with no signal. */
-const CACHE = 'quotes-cache-v8';
+const CACHE = 'quotes-cache-v9';
 const ASSETS = [
   './', './index.html', './demo.html', './tracker.html', './why-us.html', './crm.html', './how-to.html',
-  './client-handoff.html',
+  './client-handoff.html', './community.html',
   './manifest.json', './manifest-tracker.json', './manifest-crm.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
