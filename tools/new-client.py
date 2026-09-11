@@ -135,6 +135,41 @@ This folder contains the branded Business Hub for {business}. It is a private, l
 - This is a handoff package for production deployment, not a full multi-user SaaS backend.
 '''
 
+CLIENT_DIRECTORY_HTML = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client access hub</title>
+  <style>
+    :root {{ --ink:#12212e; --accent:#1a6feb; --bg:#f7f9fc; --line:#e6ebf1; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }}
+    .wrap {{ max-width:980px; margin:0 auto; padding:36px 22px 60px; }}
+    h1 {{ margin:0 0 10px; font-size:32px; }}
+    .sub {{ color:#5a6b7b; margin:0 0 24px; }}
+    .grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }}
+    .card {{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:0 8px 24px rgba(18,33,46,.04); }}
+    .card h2 {{ margin:0 0 8px; font-size:20px; }}
+    .pill {{ display:inline-block; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:#eef4ff; color:#264b7d; margin-bottom:12px; }}
+    .meta {{ color:#5a6b7b; font-size:14px; margin-bottom:12px; }}
+    .cta {{ display:inline-block; background:var(--accent); color:#fff; text-decoration:none; font-weight:700; padding:10px 16px; border-radius:10px; margin-right:8px; }}
+    .link {{ color:var(--accent); text-decoration:none; font-weight:600; }}
+    .empty {{ background:#fff; border:1px dashed var(--line); border-radius:12px; padding:22px; color:#5a6b7b; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Client access hub</h1>
+    <p class="sub">Open the right app in one tap. Each client gets their own branded copy with a local-first workflow and offline install support.</p>
+    <div class="grid">
+      {cards}
+    </div>
+  </div>
+</body>
+</html>
+'''
+
 
 def default_url(slug):
     return f"https://superwrldcoin.github.io/ai-automation-service/clients/{slug}/"
@@ -190,6 +225,40 @@ def stamp_files(dest, slug, business, theme, trade, support_email, client_url, l
     ), encoding="utf-8")
 
 
+def get_client_cards():
+    if not CLIENTS.exists():
+        return "<div class='empty'>No client apps have been generated yet.</div>"
+    cards = []
+    for cfg_path in sorted(CLIENTS.glob("*/config.json")):
+        slug = cfg_path.parent.name
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        business = cfg.get("business", slug)
+        trade = cfg.get("trade", "hvac")
+        handoff = cfg.get("handoff") or {}
+        contact = cfg.get("contact") or {}
+        client_url = handoff.get("url") or default_url(slug)
+        support_email = handoff.get("supportEmail") or contact.get("email") or "hello@vividstatic.com"
+        cards.append(
+            "<div class='card'>"
+            f"<div class='pill'>{trade}</div>"
+            f"<h2>{business}</h2>"
+            f"<div class='meta'>Support: {support_email}</div>"
+            f"<a class='cta' href='{client_url}'>Open app</a>"
+            f"<a class='link' href='{slug}/client-handoff.html'>Handoff page</a>"
+            "</div>"
+        )
+    return "\n".join(cards) if cards else "<div class='empty'>No client apps have been generated yet.</div>"
+
+
+def write_client_directory():
+    if not CLIENTS.exists():
+        return
+    (CLIENTS / "index.html").write_text(
+        CLIENT_DIRECTORY_HTML.format(cards=get_client_cards()),
+        encoding="utf-8",
+    )
+
+
 def update_engine(slugs):
     """Re-stamp existing clients with the current master engine, keeping their config.json."""
     if not slugs:
@@ -213,6 +282,7 @@ def update_engine(slugs):
             cfg.get("logo") or None,
         )
         print(f"  updated {slug} — engine, guide + handoff refreshed, config.json untouched")
+    write_client_directory()
 
 
 def main():
@@ -283,11 +353,14 @@ def main():
         cfg["pricebook"] = json.loads(Path(args.pricebook).read_text(encoding="utf-8"))
     (dest / "config.json").write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
+    write_client_directory()
+
     print(f"Created client app: {dest}")
     print(f"  Local files : {sorted(p.name for p in dest.iterdir())}")
     print(f"  Live link   : {client_url}")
     print(f"  Handoff page: {dest / 'client-handoff.html'}")
     print(f"  Their guide : {dest / 'how-to.html'}  (link + support email already filled in)")
+    print(f"  Access hub  : {CLIENTS / 'index.html'}")
     if not logo_name:
         print("  No logo     : pass --logo path/to/their-logo.png to brand the app and their quotes")
 
